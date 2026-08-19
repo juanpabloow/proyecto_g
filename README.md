@@ -22,7 +22,7 @@ python3 -m pytest -v     # corre la prueba unitaria
 
 ## Documentación
 - [Visión del producto](docs/vision-producto.md)
-- [Acuerdos de equipo](docs/acuerdos-equipo.md)
+- [Equipo](docs/Equipo/)
 - [Problema duro](docs/problema-duro.md)
 - [Decisiones técnicas](docs/decisiones-tecnicas.md)
 - [Uso de IA](docs/uso-ia.md)
