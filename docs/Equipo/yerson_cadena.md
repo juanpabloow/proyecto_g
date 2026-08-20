@@ -2,7 +2,7 @@
 
 ## Datos básicos
 
-- **Nombre completo:** Yerson Andrés Pérez Cadena
+- **Nombre completo:** Yerson Andrés Perez Cadena
 - **Rol en el proyecto:** Ingeniero de QA y Pruebas de Software
 - **Edad:** 25
 - **Usuario de GitHub:** [yersonacadena-ai]
@@ -29,4 +29,4 @@ Definición del plan de pruebas y verificación de que el esqueleto andante (car
 ## Disponibilidad
 
 - **Días/horas:** [24/7]
-- **Canal preferido de contacto:** [Temas, WhatsApp]
+- **Canal preferido de contacto:** [Teams, WhatsApp]
