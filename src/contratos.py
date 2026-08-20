@@ -29,6 +29,10 @@ def cargar_contratos(ruta_csv):
     with open(ruta_csv, newline="", encoding="utf-8") as archivo:
         lector = csv.DictReader(archivo)
 
+        # Un archivo vacío no tiene encabezado: fieldnames queda en None
+        if lector.fieldnames is None:
+            raise ValueError(f"El CSV está vacío o no tiene encabezado: {ruta_csv}")
+
         faltantes = [c for c in COLUMNAS_REQUERIDAS if c not in lector.fieldnames]
         if faltantes:
             raise ValueError(f"Faltan columnas en el CSV: {faltantes}")

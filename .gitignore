@@ -4,4 +4,8 @@ __pycache__/
 venv/
 .env
 .DS_Store
-data/
+# Datos reales / sensibles: nunca al repositorio (regla R-7).
+# El CSV de ejemplo (data/contratos_ejemplo.csv) SÍ se versiona: sin él
+# `python3 main.py` no funciona en un clon nuevo.
+data/privado/*
+!data/privado/README.md

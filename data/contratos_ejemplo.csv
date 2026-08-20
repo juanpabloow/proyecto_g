@@ -1,0 +1,6 @@
+numero_contrato,entidad,contratista,funcionario,monto,fecha
+001,Alcaldía de Ejemplo,ACME SAS,Juan Pérez,50000000,2026-01-15
+002,Alcaldía de Ejemplo,Otra Empresa Ltda,Ana Ruiz,30000000,2026-02-10
+003,Gobernación Ejemplo,ACME SAS,Juan Pérez,45000000,2026-03-05
+004,Alcaldía de Ejemplo,Constructora XYZ,Carlos Gómez,80000000,2026-03-20
+005,Gobernación Ejemplo,ACME SAS,Juan Pérez,60000000,2026-04-01
