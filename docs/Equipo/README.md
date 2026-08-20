@@ -6,6 +6,8 @@ el suyo.
 
 ## Integrantes
 - [Juan Pablo Cardozo Rivera](juan-pablo-cardozo-rivera.md) — Ingeniero de backend
+- [Yerson Andrés Pérez Cadena](yerson_cadena.md) — Ingeniero de QA y pruebas
+- [Gerson Geovanni Rojo Rodríguez](gerson_rojo.md) — Ingeniero de requisitos y analista de negocio
 
 ## Plantilla
 ```markdown

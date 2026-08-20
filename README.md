@@ -11,9 +11,12 @@ una alerta es una hipótesis a verificar por una persona
 ([por qué](docs/vision-producto.md)).
 
 ## Integrantes
-- Juan Pablo Cardozo Rivera — [ficha](docs/Equipo/juan-pablo-cardozo-rivera.md)
-- Yerson Andrés Pérez Cadena — *ficha pendiente*
-- Gerson Geovanni Rojo Rodríguez — *ficha pendiente*
+
+| Integrante | Rol | Ficha |
+|---|---|---|
+| Juan Pablo Cardozo Rivera | Ingeniero de backend | [ficha](docs/Equipo/juan-pablo-cardozo-rivera.md) |
+| Yerson Andrés Pérez Cadena | Ingeniero de QA y pruebas | [ficha](docs/Equipo/yerson_cadena.md) |
+| Gerson Geovanni Rojo Rodríguez | Ingeniero de requisitos y analista de negocio | [ficha](docs/Equipo/gerson_rojo.md) |
 
 ## Estado actual (Semana 3)
 

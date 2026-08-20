@@ -114,10 +114,22 @@ backlog y decisiones.
 | 3 | Nombres escritos distinto no se reconocen → falsos negativos | Limitación | [R-5](reglas-de-negocio.md), [HU-05](historias-usuario.md) |
 | 4 | Idempotencia entre ejecuciones (requiere persistencia) | Alcance | [HU-07](historias-usuario.md) |
 | 5 | Un duplicado con datos distintos se pierde en silencio | Limitación | [HU-06](historias-usuario.md) |
-| 6 | Falta la ficha de 2 de los 3 integrantes | Documentación | [docs/Equipo/](Equipo/) |
-| 7 | `monto` y `fecha` se manejan como texto | Deuda técnica | [R-8](reglas-de-negocio.md) |
-| 8 | Fraccionamiento, tablero visual, SECOP, concurrencia | Trabajo futuro | [Visión §6](vision-producto.md) |
+| 6 | `monto` y `fecha` se manejan como texto | Deuda técnica | [R-8](reglas-de-negocio.md) |
+| 7 | Fraccionamiento, tablero visual, SECOP, concurrencia | Trabajo futuro | [Visión §6](vision-producto.md) |
 
 Los pendientes 1, 2 y 3 son los que más afectan la confianza del
 analista: los dos primeros pueden producir alertas falsas y el tercero
 puede ocultar reincidencias reales.
+
+## 7. Quién mantiene qué
+
+| Área | Responsable | Archivos |
+|---|---|---|
+| Requisitos, backlog y reglas de negocio | Gerson Rojo — [ficha](Equipo/gerson_rojo.md) | `docs/historias-usuario.md`, `docs/reglas-de-negocio.md`, `docs/vision-producto.md`, `docs/stakeholders.md` |
+| Carga de datos y detección de alertas | Juan Pablo Cardozo — [ficha](Equipo/juan-pablo-cardozo-rivera.md) | `main.py`, `src/` |
+| Plan de pruebas y verificación de criterios | Yerson Pérez — [ficha](Equipo/yerson_cadena.md) | `tests/` |
+| Decisiones y documentación de proceso | Equipo | `docs/decisiones-tecnicas.md`, `docs/uso-ia.md` |
+
+Los pendientes 1 y 2 de la sección 6 son **decisiones de negocio**, no
+técnicas: le corresponde al rol de requisitos llevarlas a un analista
+real antes de implementarlas ([Decisión 11](decisiones-tecnicas.md)).
