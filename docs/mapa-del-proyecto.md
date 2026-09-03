@@ -14,6 +14,8 @@ por la tabla de la sección 1.
 | **La historia central, desarrollada a fondo** | [docs/historias-usuario.md → HU-02](historias-usuario.md#hu-02--detectar-reincidencia-contratista-funcionario-historia-central) |
 | Qué cuenta como alerta / qué hace el sistema con un dato raro | [docs/reglas-de-negocio.md](reglas-de-negocio.md) |
 | El glosario del dominio (reincidencia, clave natural, evidencia…) | [docs/reglas-de-negocio.md § Glosario](reglas-de-negocio.md) |
+| Las clases del sistema y cómo se relacionan | [docs/diagrama-dominio.md](diagrama-dominio.md) |
+| Cómo se guardarán los datos (modelo entidad–relación) | [docs/esquema-bd.md](esquema-bd.md) |
 | Por qué se tomó cada decisión | [docs/decisiones-tecnicas.md](decisiones-tecnicas.md) |
 | Quién hizo qué en el equipo | [docs/Equipo/](Equipo/) |
 | Cómo se usó IA y cuál es la postura del equipo | [docs/uso-ia.md](uso-ia.md) |
@@ -46,6 +48,8 @@ proyecto_g/
     ├── problema-duro.md         Idempotencia: enunciado, decisión, alcance real
     ├── historias-usuario.md     Backlog priorizado (MoSCoW) + HU-02 a fondo
     ├── reglas-de-negocio.md     Lógica de negocio explícita + glosario
+    ├── diagrama-dominio.md      Diagrama de clases (Mermaid) + decisiones de modelado
+    ├── esquema-bd.md            Modelo entidad–relación (Mermaid) + restricciones
     ├── decisiones-tecnicas.md   11 decisiones con su alternativa descartada
     ├── mapa-del-proyecto.md     Este documento
     ├── uso-ia.md                Uso de IA y postura del equipo
