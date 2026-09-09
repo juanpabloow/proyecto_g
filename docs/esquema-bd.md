@@ -174,6 +174,7 @@ erDiagram
   pero esas historias todavía no están decididas.
 - **Usuarios y estado de revisión de la alerta.** Es una decisión del
   negocio, no del equipo ([Decisión 11](decisiones-tecnicas.md)).
-- **Tipos exactos, longitudes e índices.** Van en el modelo físico.
+- **Tipos exactos, longitudes e índices.** Están en el modelo físico:
+  [`db/schema.sql`](../db/schema.sql).
 - **Puntajes o rankings de personas.** El modelo no puede guardar algo
   que el producto promete no hacer ([R-4](reglas-de-negocio.md)).
