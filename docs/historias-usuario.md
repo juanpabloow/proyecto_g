@@ -17,7 +17,7 @@ puntos relativos (1 = trivial, 8 = requiere investigación).
 |---|---|---|---|---|
 | [HU-01](#hu-01--cargar-contratos-desde-un-archivo-csv) | Cargar contratos desde un archivo CSV | **Must** | 3 | ✅ Hecha |
 | [HU-02](#hu-02--detectar-reincidencia-contratista-funcionario-historia-central) | Detectar reincidencia contratista–funcionario | **Must** | 5 | ✅ Hecha |
-| [HU-04](#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) | No generar alertas a partir de filas incompletas | Should | 2 | 🔜 Siguiente |
+| [HU-04](#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) | No generar alertas a partir de filas incompletas | Should | 2 | ✅ Hecha *(módulo Java)* |
 | [HU-05](#hu-05--reconocer-el-mismo-nombre-escrito-de-formas-distintas) | Reconocer el mismo nombre escrito distinto | Should | 5 | ⬜ Pendiente |
 | [HU-06](#hu-06--saber-cuándo-un-duplicado-traía-datos-distintos) | Saber cuándo un duplicado traía datos distintos | Could | 3 | ⬜ Pendiente |
 | [HU-07](#hu-07--conservar-los-contratos-entre-ejecuciones) | Conservar los contratos entre ejecuciones | Should | 8 | ⬜ Pendiente |
@@ -150,15 +150,61 @@ continuación es verificarla una por una
 1. **Dado** un CSV con dos filas cuyo contratista y funcionario están
    vacíos, **cuando** ejecuto el análisis, **entonces** no se genera
    ninguna alerta.
+   → `criterio 1: dos filas sin contratista ni funcionario no generan alerta`
 2. **Dado** un CSV con filas incompletas, **cuando** lo cargo,
    **entonces** el sistema me informa cuántas filas se descartaron y por
    qué.
+   → `criterio 2: informa cuántas filas se descartaron y por qué`
 
-**Por qué no está hecha:** hoy esas dos filas **sí** producen una alerta
-del par `("", "")` — comportamiento verificado y documentado en
-[R-6](reglas-de-negocio.md). Falta una decisión de negocio: ¿la fila se
-descarta, se reporta, o invalida el archivo? Es de S-1, no del equipo
-técnico. **Es el primer ítem del backlog pendiente.**
+### La decisión que la desbloqueó
+
+La pregunta abierta era: ¿la fila incompleta **se descarta**, **se
+reporta** o **invalida el archivo completo**? Se resolvió así
+([Decisión 12](decisiones-tecnicas.md)):
+
+> **La fila se descarta y se reporta. El archivo sigue siendo válido.**
+
+- **Aceptarla** era el defecto: produce una alerta del par `("", "")`,
+  una alerta sobre nadie ([R-6](reglas-de-negocio.md)).
+- **Invalidar el archivo** deja al analista sin nada por una fila mala
+  entre cinco mil. El costo cae sobre quien no cometió el error.
+- **Descartar en silencio** esconde un problema de calidad de datos — por
+  eso el criterio 2 ya pedía informar cuántas y por qué. La propia
+  historia venía respondiendo la pregunta a medias.
+
+**Es provisional.** Sigue siendo una decisión de S-1: el equipo la tomó
+para no dejar la historia bloqueada, es una excepción explícita a la
+[Decisión 11](decisiones-tecnicas.md), y revertirla es cambiar una lista
+(`CAMPOS_OBLIGATORIOS`), no reescribir la carga.
+
+### Qué se descarta exactamente
+
+| Campo vacío | ¿Descarta la fila? | Por qué |
+|---|---|---|
+| `contratista`, `funcionario` | Sí | Son el par sobre el que se alerta: vacíos generan una alerta sobre nadie |
+| `numero_contrato`, `entidad` | Sí | Son la clave natural: sin ella no se puede saber si el contrato ya estaba cargado ([R-2](reglas-de-negocio.md)) |
+| `monto`, `fecha` | No | La señal no los usa ([R-8](reglas-de-negocio.md)); descartar por ellos perdería reincidencias reales |
+
+Una celda con solo espacios cuenta como vacía. Los valores que sí se
+cargan **no se normalizan**: decidir que `" Juan Pérez"` y `"Juan Pérez"`
+son la misma persona es [HU-05](#hu-05--reconocer-el-mismo-nombre-escrito-de-formas-distintas)
+y necesita validación de S-1 ([R-5](reglas-de-negocio.md)).
+
+### Definition of Done
+
+- [x] Los 2 criterios tienen prueba y pasan.
+- [x] La regla quedó escrita en [R-6](reglas-de-negocio.md), con la
+      decisión de negocio marcada como provisional.
+- [x] Funciona de punta a punta: `java/ejecutar.sh main <archivo.csv>`.
+- [ ] **Confirmar la Decisión 12 con un analista real (S-1).**
+
+> ⚠️ **Hecha solo en el módulo Java** (`java/`). El código Python de
+> `src/` sigue con el comportamiento de [R-6](reglas-de-negocio.md):
+> duplicación deliberada y registrada en la
+> [Decisión 13](decisiones-tecnicas.md).
+
+**Código:** `java/src/dac/CargadorDeContratos.java` ·
+**Pruebas:** `java/test/dac/pruebas/PruebasFilasIncompletas.java`
 
 ---
 

@@ -88,24 +88,47 @@ personas escritas en minúscula **no** genera alerta.
   un analista; inventarlas sería peor que dejar la limitación visible.
 - **Trabajo futuro:** [HU-05](historias-usuario.md).
 
-## R-6 — Filas incompletas: hoy se aceptan **[Pendiente — genera falsos positivos]**
+## R-6 — Filas incompletas: se descartan y se reportan **[Implementada en Java — pendiente en Python]**
 
-Verificado: dos contratos con `contratista` y `funcionario` **vacíos**
-producen una alerta del par `("", "")`. Es decir, una alerta sobre
-nadie.
+Una fila sin `contratista`, sin `funcionario`, sin `numero_contrato` o
+sin `entidad` no se convierte en contrato: se descarta, y la carga
+informa **cuántas** filas se descartaron y **por qué**, indicando el
+número de fila. El resto del archivo se analiza igual.
 
-- **Decisión que falta:** ¿la fila incompleta se descarta, se reporta
-  como error de calidad de datos, o invalida el archivo completo? Es una
-  decisión del negocio (S-1), no técnica, y por eso no se resolvió por
-  cuenta propia.
-- **Trabajo futuro:** [HU-04](historias-usuario.md) — prioridad más
-  alta del backlog pendiente.
+- **Qué cuenta como vacío:** vacío o solo espacios. Ojo: eso **no** es
+  normalizar nombres — los valores se guardan tal como vienen en el
+  archivo (R-5, [Decisión 9](decisiones-tecnicas.md)).
+- **Qué no descarta la fila:** `monto` y `fecha` vacíos. La señal no los
+  usa (R-8) y descartar por ellos perdería reincidencias reales.
+- **Por qué se descartan también las filas sin clave natural:** sin
+  `numero_contrato` + `entidad` no se puede saber si el contrato ya
+  estaba cargado (R-2), que es el problema duro de la entrega.
+- **Decisión de negocio:** [Decisión 12](decisiones-tecnicas.md), tomada
+  por el equipo de forma **provisional** y pendiente de confirmación con
+  S-1.
+
+> ⚠️ **Solo en el módulo Java.** En `src/contratos.py` sigue el
+> comportamiento anterior, verificado: dos contratos con `contratista` y
+> `funcionario` vacíos producen una alerta del par `("", "")` — una
+> alerta sobre nadie. La duplicación es deliberada y está registrada en
+> la [Decisión 13](decisiones-tecnicas.md).
+
+- Código: `java/src/dac/CargadorDeContratos.java` → `CAMPOS_OBLIGATORIOS`
+- Pruebas: `java/test/dac/pruebas/PruebasFilasIncompletas.java`
+- Historia: [HU-04](historias-usuario.md)
 
 ## R-7 — Los datos reales no entran al repositorio **[Implementada]**
 
-`data/contratos_ejemplo.csv` es un archivo **ficticio** y sí se versiona:
-sin él, `python3 main.py` no funciona en un clon nuevo. Cualquier archivo
-con datos reales va en `data/privado/`, que está en `.gitignore`.
+Los dos CSV de `data/` son **ficticios** y sí se versionan: sin ellos, ni
+`python3 main.py` ni la demostración de HU-04 funcionan en un clon nuevo.
+
+| Archivo | Para qué |
+|---|---|
+| `contratos_ejemplo.csv` | El flujo feliz: 5 contratos limpios, 1 reincidencia |
+| `contratos_incompletos_ejemplo.csv` | Filas incompletas y un duplicado: sirve para mostrar HU-04 y el defecto que corrige |
+
+Cualquier archivo con datos reales va en `data/privado/`, que está en
+`.gitignore`.
 
 Motivado por los stakeholders S-7 (TI/seguridad) y S-8 (protección de
 datos).

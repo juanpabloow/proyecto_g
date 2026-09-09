@@ -29,5 +29,24 @@ dentro de dos meses— entienda por qué el proyecto está como está.
 | 9 | **No** normalizamos nombres de contratistas/funcionarios en este MVP | Aplicar mayúsculas/tildes/sufijos por nuestra cuenta | Normalizar de más une empresas distintas de nombre parecido y señala a alguien por error (S-6). Requiere validación con un analista ([R-5](reglas-de-negocio.md)) |
 | 10 | El CSV de ejemplo **se versiona**; los datos reales van en `data/privado/` (ignorado) | Ignorar toda la carpeta `data/` | Ignorar `data/` completa dejaba el repositorio sin el archivo que `main.py` necesita: un clon nuevo no podía ejecutar el proyecto ([R-7](reglas-de-negocio.md)) |
 | 11 | Las decisiones de negocio sin resolver **se documentan como pendientes**, no se resuelven por cuenta técnica | Elegir nosotros el umbral, el manejo de filas incompletas, etc. | Son decisiones del usuario (S-1). Inventarlas produciría un sistema que "funciona" con reglas que nadie validó ([R-3](reglas-de-negocio.md), [HU-04](historias-usuario.md)) |
+| 12 | Una fila incompleta **se descarta y se reporta**; el archivo sigue siendo válido | Aceptarla (lo que se hacía, [R-6](reglas-de-negocio.md)); o invalidar el archivo completo | Aceptarla produce una alerta del par `("", "")`: una alerta sobre nadie. Invalidar el archivo deja al analista sin nada por una fila mala entre 5.000. Y descartar en silencio esconde un problema de calidad de datos, por eso se informa cuántas y por qué — que es lo que el criterio 2 de [HU-04](historias-usuario.md) ya pedía |
+| 13 | El módulo [`java/`](../java/) reimplementa HU-01, HU-02 y HU-04; el código Python queda intacto | Migrar todo a Java de una vez; o hacer HU-04 solo en Python | HU-04 en Java necesitaba la base (carga + detección) reimplementada. Revisa la Decisión 4 en parte: **hay duplicación deliberada** — HU-04 está hecha en Java y sigue pendiente en Python. Consolidar en un solo lenguaje es lo primero de la próxima entrega |
+
+## Sobre la Decisión 12: una excepción consciente a la Decisión 11
+
+La Decisión 11 dice que las decisiones de negocio sin resolver se
+documentan como pendientes en vez de resolverlas por cuenta técnica. La
+Decisión 12 es una **excepción explícita**, y conviene que se note:
+
+- La historia llevaba semanas bloqueada por una pregunta que su propio
+  criterio de aceptación 2 ya respondía a medias (*"me informa cuántas
+  filas se descartaron y por qué"* solo tiene sentido si la fila se
+  descarta y el archivo sobrevive).
+- Es **provisional y reversible**: cambiar la política es cambiar la
+  lista `CAMPOS_OBLIGATORIOS` en `CargadorDeContratos`, no reescribir la
+  carga.
+- **Sigue pendiente de confirmación con S-1.** Si el analista dice que
+  una fila incompleta debe invalidar el archivo, la decisión cambia y el
+  código detrás también.
 
 Nuevas decisiones se van agregando aquí a medida que el equipo avanza.
