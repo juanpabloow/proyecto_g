@@ -1,0 +1,9 @@
+numero_contrato,entidad,contratista,funcionario,monto,fecha
+101,Alcaldía de Ejemplo,ACME SAS,Juan Pérez,50000000,2026-01-15
+102,Alcaldía de Ejemplo,Constructora XYZ,Ana Ruiz,30000000,2026-02-10
+103,Gobernación Ejemplo,ACME SAS,Juan Pérez,45000000,2026-03-05
+104,Alcaldía de Ejemplo,,,80000000,2026-03-20
+105,Gobernación Ejemplo,,,12000000,2026-04-01
+106,Alcaldía de Ejemplo,Suministros del Sur,   ,25000000,2026-04-18
+107,Gobernación Ejemplo,Suministros del Sur,Carlos Gómez,,
+101,Alcaldía de Ejemplo,ACME SAS,Juan Pérez,50000000,2026-01-15

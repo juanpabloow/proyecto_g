@@ -1,4 +1,5 @@
 __pycache__/
+java/build/
 *.py[cod]
 .venv/
 venv/
