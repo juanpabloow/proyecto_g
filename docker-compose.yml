@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16
+    container_name: dac_db
+    environment:
+      POSTGRES_DB: dac
+      POSTGRES_USER: dac_user
+      POSTGRES_PASSWORD: dac_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./db/datos.sql:/docker-entrypoint-initdb.d/02_datos.sql
+      - dac_data:/var/lib/postgresql/data
+
+volumes:
+  dac_data:
