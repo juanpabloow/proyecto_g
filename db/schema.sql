@@ -66,8 +66,12 @@ CREATE TABLE contrato (
     id_entidad      BIGINT        NOT NULL,
     id_contratista  BIGINT        NOT NULL,
     id_funcionario  BIGINT        NOT NULL,
-    monto           NUMERIC(15,2) NOT NULL,
-    fecha           DATE          NOT NULL,
+    -- monto y fecha admiten NULL a proposito: R-6 dice que una fila con
+    -- monto o fecha vacios NO se descarta, porque la senal de reincidencia
+    -- no los usa (R-3, R-8) y descartarla perderia reincidencias reales.
+    -- El modelo logico (docs/esquema-bd.md) tampoco los marca obligatorios.
+    monto           NUMERIC(15,2),
+    fecha           DATE,
 
     -- >>> El problema duro, convertido en restriccion <<<
     -- La identidad de un contrato es numero_contrato + entidad (R-2).
