@@ -31,10 +31,12 @@ public class ContratoJpa {
     @JoinColumn(name = "id_funcionario")
     private FuncionarioJpa funcionario;
 
-    @Column(nullable = false, precision = 15, scale = 2)
+    /** Admite null: una fila sin monto no se descarta (R-6). */
+    @Column(precision = 15, scale = 2)
     private BigDecimal monto;
 
-    @Column(nullable = false)
+    /** Admite null: una fila sin fecha no se descarta (R-6). */
+    @Column
     private LocalDate fecha;
 
     protected ContratoJpa() {}

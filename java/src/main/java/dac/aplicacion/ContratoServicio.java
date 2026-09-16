@@ -66,7 +66,7 @@ public class ContratoServicio {
             if (!existe) {
                 contratoRepo.save(new ContratoJpa(
                         c.numeroContrato(), entidad, contratista, funcionario,
-                        new BigDecimal(c.monto()), LocalDate.parse(c.fecha())));
+                        aMonto(c.monto()), aFecha(c.fecha())));
                 nuevos++;
             }
         }
@@ -78,12 +78,26 @@ public class ContratoServicio {
                         j.getEntidad().getNombre(),
                         j.getContratista().getNombre(),
                         j.getFuncionario().getNombre(),
-                        j.getMonto().toPlainString(),
-                        j.getFecha().toString()))
+                        j.getMonto() == null ? "" : j.getMonto().toPlainString(),
+                        j.getFecha() == null ? "" : j.getFecha().toString()))
                 .toList();
 
         List<Alerta> alertas = detector.detectar(historico);
 
-        return new ResultadoServicio(nuevos, historico.size(), carga.filasDescartadas(), alertas);
+        return new ResultadoServicio(nuevos, historico.size(), carga.duplicadosIgnorados(),
+                carga.filasDescartadas(), alertas);
+    }
+
+    /**
+     * El dominio trata monto y fecha como texto (R-8) y R-6 dice que estar
+     * vacíos no descarta la fila: la señal de reincidencia no los usa. Aquí
+     * el vacío se convierte en NULL en lugar de romper la carga completa.
+     */
+    private static BigDecimal aMonto(String monto) {
+        return monto == null || monto.isBlank() ? null : new BigDecimal(monto);
+    }
+
+    private static LocalDate aFecha(String fecha) {
+        return fecha == null || fecha.isBlank() ? null : LocalDate.parse(fecha);
     }
 }

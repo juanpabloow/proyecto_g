@@ -20,7 +20,7 @@ puntos relativos (1 = trivial, 8 = requiere investigación).
 | [HU-04](#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) | No generar alertas a partir de filas incompletas | Should | 2 | ✅ Hecha *(módulo Java)* |
 | [HU-05](#hu-05--reconocer-el-mismo-nombre-escrito-de-formas-distintas) | Reconocer el mismo nombre escrito distinto | Should | 5 | ⬜ Pendiente |
 | [HU-06](#hu-06--saber-cuándo-un-duplicado-traía-datos-distintos) | Saber cuándo un duplicado traía datos distintos | Could | 3 | ⬜ Pendiente |
-| [HU-07](#hu-07--conservar-los-contratos-entre-ejecuciones) | Conservar los contratos entre ejecuciones | Should | 8 | ⬜ Pendiente |
+| [HU-07](#hu-07--conservar-los-contratos-entre-ejecuciones) | Conservar los contratos entre ejecuciones | Should | 8 | ✅ Hecha |
 | [HU-03](#hu-03--detectar-fraccionamiento-de-contratos) | Detectar fraccionamiento de contratos | Could | 8 | ⬜ Fuera de esta entrega |
 | [HU-08](#hu-08--exportar-el-reporte-de-alertas) | Exportar el reporte de alertas | Could | 3 | ⬜ Pendiente |
 
@@ -195,7 +195,8 @@ y necesita validación de S-1 ([R-5](reglas-de-negocio.md)).
 - [x] Los 2 criterios tienen prueba y pasan.
 - [x] La regla quedó escrita en [R-6](reglas-de-negocio.md), con la
       decisión de negocio marcada como provisional.
-- [x] Funciona de punta a punta: `java/ejecutar.sh main <archivo.csv>`.
+- [x] Funciona de punta a punta: `POST /api/contratos/cargar` con un CSV
+      que traiga filas incompletas.
 - [ ] **Confirmar la Decisión 12 con un analista real (S-1).**
 
 > ⚠️ **Hecha solo en el módulo Java** (`java/`). El código Python de
@@ -203,8 +204,9 @@ y necesita validación de S-1 ([R-5](reglas-de-negocio.md)).
 > duplicación deliberada y registrada en la
 > [Decisión 13](decisiones-tecnicas.md).
 
-**Código:** `java/src/dac/CargadorDeContratos.java` ·
-**Pruebas:** `java/test/dac/pruebas/PruebasFilasIncompletas.java`
+**Código:** `java/src/main/java/dac/dominio/CargadorDeContratos.java` ·
+**Prueba:** `java/src/test/java/dac/ContratoE2ETest.java` →
+`carga_filas_incompletas_sin_invalidar_el_archivo`
 
 ---
 
@@ -263,6 +265,17 @@ Hoy gana la primera fila sin avisar
 Es el paso que convierte la idempotencia "dentro de una carga" en
 idempotencia real, y requiere almacenamiento persistente
 ([problema duro §5](problema-duro.md)).
+
+**Hecha.** La clave natural pasó a ser una restricción de la base de datos
+(`uq_contrato_clave_natural` en [db/schema.sql](../db/schema.sql)), así que
+recargar un contrato ya cargado no lo duplica ni en Java ni en Python:
+
+- Java: `ContratoServicio.cargarYDetectar` consulta por clave natural antes
+  de insertar. Lo verifica la prueba `e2e_carga_persiste_y_es_idempotente`
+  ([esqueleto/rebanada.md §4](../esqueleto/rebanada.md)), que hace la misma
+  carga dos veces y exige `contratosNuevos == 0` en la segunda.
+- Python: `repositorio.guardar_contratos` inserta con
+  `ON CONFLICT ON CONSTRAINT uq_contrato_clave_natural DO NOTHING`.
 
 ---
 

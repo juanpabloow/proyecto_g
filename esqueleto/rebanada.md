@@ -1,6 +1,6 @@
 # Esqueleto andante — Rebanada
 
-Tecnologías: Java · PostgreSQL
+Tecnologías: Java 21 · Spring Boot 3.3 · PostgreSQL 16
 
 ---
 
@@ -10,41 +10,50 @@ Tecnologías: Java · PostgreSQL
 
 **Candidata A — Carga y persistencia sin detección**
 
-`CSV → CargadorDeContratos (Java) → JDBC → PostgreSQL (INSERT + SELECT) → consola`
+`CSV → CargadorDeContratos (Java) → persistencia → PostgreSQL (INSERT + SELECT) → salida`
 
 Fronteras cruzadas: Entrada externa · Aplicación · Dominio · Persistencia real · Migración — **5 fronteras, 1 regla de negocio (R-2)**.
 
 **Candidata B — Flujo completo: carga + detección + persistencia de alertas**
 
-`CSV → CargadorDeContratos → DetectorDeReincidencias → JDBC → PostgreSQL (5 tablas) → consola`
+`CSV → CargadorDeContratos → DetectorDeReincidencias → persistencia → PostgreSQL (6 tablas) → salida`
 
 Fronteras cruzadas: Entrada externa · Aplicación · Dominio · Persistencia real · Migración — **5 fronteras, 4 reglas de negocio (R-2, R-3, R-4, R-6)**.
+
+> **Aclaración sobre el conteo de fronteras.** En ambas candidatas, tal como se plantearon, la frontera de *entrada externa* es **un archivo CSV leído desde el propio proceso**, no HTTP/UI. Ninguna de las dos cruzaba la frontera HTTP/UI que nombra el criterio del taller, y por eso empatan en 5. Con el empate, el desempate tuvo que hacerse por el segundo término del criterio: el mínimo de reglas de negocio.
 
 ### Elección: Candidata A
 
 La Candidata B se descarta porque agrega tres reglas de negocio adicionales (R-3, R-4, R-6) sin cruzar ninguna frontera técnica extra: el número de capas es idéntico al de A. El dominio más ancho —cuatro clases en lugar de dos— puede bloquear la validación de la persistencia si falla la detección, que es exactamente lo que el esqueleto debe evitar.
 
-> **Nota (post-implementación, migración a Spring Boot):** la Candidata A elegida aquí excluía la detección a propósito. La implementación real que terminó construyéndose (`java/src/main/java/dac/`, HU-07) incluye `DetectorDeReincidencias` dentro del mismo `ContratoServicio.cargarYDetectar`, es decir, se acerca más a la Candidata B en alcance funcional — aunque conserva las mismas 5 fronteras técnicas. Ver sección 6 para el detalle de esta divergencia.
+### Lo que se implementó: Candidata A extendida
 
-### Candidata A extendida (formalización post-implementación)
+La rebanada que efectivamente se construyó y se prueba (`java/src/main/java/dac/`, HU-07, `ContratoE2ETest`) se declara **Candidata A extendida**. Diverge de la Candidata A elegida en dos puntos, y ambos se declaran aquí en lugar de presentarlos como si hubieran estado en el diseño:
 
-La rebanada que terminó implementándose y probándose (`java/src/main/java/dac/`, HU-07, `ContratoServicioE2ETest`) se declara formalmente **Candidata A extendida**: conserva las 5 fronteras técnicas de A exactamente como se justificaron arriba —mismo número de capas que B, sin integración adicional— pero incorpora el comportamiento de detección de `DetectorDeReincidencias` que la Candidata A original excluía a propósito. No se revirtió el código para ajustarlo al diseño original porque la detección ya quedó implementada dentro de la misma transacción de `cargarYDetectar` y con su prueba pasando; revertirla habría descartado trabajo ya validado sin necesidad. La extensión no agrega ninguna frontera técnica nueva (sigue habiendo 5), solo amplía lo que ocurre dentro de la frontera de Dominio — ver fila 3 de la tabla siguiente y el detalle en sección 6.
+| Divergencia | Efecto sobre el conteo del criterio |
+|---|---|
+| **La entrada externa pasó de archivo local a HTTP** (`POST /api/contratos/cargar`) | Sigue siendo **una** frontera de entrada: HTTP reemplaza al archivo, no se suma. El total sigue en 5, pero ahora la frontera 1 es exactamente la que el criterio del taller nombra (HTTP/UI) en vez de una lectura de archivo dentro del proceso. La rebanada implementada queda **mejor alineada con el criterio** que cualquiera de las dos candidatas escritas. |
+| **Se incluyó `DetectorDeReincidencias` dentro de `cargarYDetectar`** | Sube las reglas de negocio de 1 (R-2) a 5 (R-1, R-2, R-3, R-4, R-6). En alcance funcional esto es **la Candidata B menos la persistencia de alertas**, o sea casi exactamente lo que el análisis de arriba había descartado. |
 
-### Fronteras que cruza la Candidata A extendida
+La segunda divergencia contradice el motivo por el que se eligió A. Se deja registrada como tal y no se revirtió el código porque la detección ya estaba implementada dentro de la misma transacción y con su prueba pasando; revertirla habría descartado trabajo validado sin ganar ninguna frontera. **Quien defienda este entregable debe poder decir esto en voz alta:** el criterio se aplicó correctamente al elegir, y luego la implementación se salió de la elección.
 
-| # | Frontera | Qué ocurre |
-|---|---|---|
-| 1 | Entrada externa | Cliente HTTP invoca `POST /api/contratos/cargar`, recibido por `ContratoControlador` |
-| 2 | Aplicación | `ContratoServicio` orquesta la rebanada |
-| 3 | Dominio | `CargadorDeContratos` construye objetos `Contrato` con clave natural; `DetectorDeReincidencias` detecta reincidencia sobre el histórico (extensión respecto a la Candidata A original — ver nota arriba) |
-| 4 | Persistencia real | JDBC escribe y lee en PostgreSQL (mapeo dominio ↔ SQL) |
-| 5 | Migración | `db/schema.sql` debe estar aplicado para que existan las tablas |
+### Fronteras que cruza la rebanada implementada
+
+| # | Frontera | Qué ocurre | Participante en §2 |
+|---|---|---|---|
+| 1 | Entrada externa (HTTP) | Cliente HTTP invoca `POST /api/contratos/cargar` con el CSV como `multipart`; lo recibe `ContratoControlador` | `ContratoControlador` |
+| 2 | Aplicación | `ContratoServicio.cargarYDetectar` orquesta la rebanada y delimita la transacción | `ContratoServicio` |
+| 3 | Dominio | `CargadorDeContratos` construye `Contrato` con clave natural (R-1, R-2, R-6); `DetectorDeReincidencias` detecta reincidencia sobre el histórico (R-3, R-4) | `Dominio` |
+| 4 | Persistencia real | Spring Data JPA escribe y lee en PostgreSQL; aquí ocurre el mapeo dominio ↔ persistencia | `Persistencia` + `PostgreSQL` |
+| 5 | Migración | `db/schema.sql` debe estar aplicado para que existan las 6 tablas; lo aplica `docker-compose.yml` al crear el contenedor | *sin participante — ver nota en §2* |
 
 ---
 
 ## 2 · Diagrama de secuencia
 
-> Actualizado a la implementación real en Spring Boot (`java/src/main/java/dac/`). El punto de entrada dejó de ser un CLI (`dac.Main`, que nunca llegó a existir — ver sección 6) y pasó a ser el endpoint HTTP `POST /api/contratos/cargar`. `ContratoControlador` y `ContratoServicio` se modelan como participantes separados a propósito: son dos fronteras técnicas distintas de la Tarea 2 (1 — Entrada externa, 2 — Aplicación), no una sola clase con dos nombres.
+Un participante por frontera técnica. `ContratoControlador` y `ContratoServicio` son participantes separados porque son dos fronteras distintas (1 — Entrada externa, 2 — Aplicación), no una clase con dos nombres. Las clases del dominio se agrupan en un solo participante `Dominio` para no proliferar clases, y las cuatro interfaces de repositorio en un solo participante `Persistencia`.
+
+**La frontera 5 (Migración) no tiene participante a propósito:** no es un interlocutor del flujo, es la precondición de que `db/schema.sql` esté aplicado. Añadirla como participante sería inventar un mensaje que nadie envía. Se verifica en la prueba de §4, no en el diagrama.
 
 ```mermaid
 sequenceDiagram
@@ -57,59 +66,103 @@ sequenceDiagram
 
     Cliente->>Api: POST /api/contratos/cargar (multipart: archivo)
     Api->>App: cargarYDetectar(InputStream csv)
-    App->>Dom: cargarDesde(csv)
+
+    Note over App,DB: INICIO de la transacción<br/>(@Transactional sobre cargarYDetectar)
+
+    App->>Dom: CargadorDeContratos.cargarDesde(csv)
 
     alt columna requerida ausente (R-1)
         Dom-->>App: IllegalArgumentException(columnas faltantes)
-        App-->>Api: (propaga la excepción)
+        Note over App,DB: ROLLBACK — no se escribe ninguna fila
+        App-->>Api: propaga la excepción
         Api-->>Cliente: 400 Bad Request
     else archivo válido
-        Dom-->>App: ResultadoCarga(contratos, filasDescartadas)
+        Dom-->>App: ResultadoCarga(List~Contrato~,<br/>List~FilaDescartada~, duplicadosIgnorados)
 
-        Note over Per,DB: @Transactional
         App->>Per: EntidadRepo / ContratistaRepo / FuncionarioRepo:<br/>findByNombre(...).orElseGet(save) por cada contrato
-        Per->>DB: SELECT / INSERT si no existe
-        Note over Per: mapeo dominio → JPA<br/>(Contrato → EntidadJpa/ContratistaJpa/<br/>FuncionarioJpa/ContratoJpa — R-2)
-        App->>Per: ContratoRepo.findByNumeroContratoAndEntidad(...)<br/>→ save(nuevo ContratoJpa) solo si no existe (R-2, idempotencia)
+        Note over Per: MAPEO dominio → persistencia<br/>Contrato → EntidadJpa / ContratistaJpa / FuncionarioJpa
+        Per->>DB: SELECT; INSERT solo si no existe
+
+        App->>Per: ContratoRepo.findByNumeroContratoAndEntidad(...)<br/>→ save(new ContratoJpa(...)) solo si no existe
+        Note over Per: MAPEO dominio → persistencia<br/>Contrato → ContratoJpa (R-2, idempotencia HU-07)
         Per->>DB: SELECT + INSERT condicional<br/>(uq_contrato_clave_natural como respaldo)
-        Note over Per,DB: COMMIT (fin de cargarYDetectar)
 
         App->>Per: ContratoRepo.findAllConFetch()
         Per->>DB: SELECT contrato JOIN entidad, contratista, funcionario
         DB-->>Per: ResultSet
-        Note over Per: mapeo JPA → dominio<br/>(List~ContratoJpa~ → List~Contrato~)
+        Note over Per: MAPEO persistencia → dominio<br/>List~ContratoJpa~ → List~Contrato~ (Contrato.de)
         Per-->>App: List~Contrato~ (histórico completo)
 
         App->>Dom: DetectorDeReincidencias.detectar(histórico)
         Dom-->>App: List~Alerta~
 
-        App-->>Api: ResultadoServicio(contratosNuevos, totalEnBd, filasDescartadas, alertas)
+        Note over App,DB: COMMIT — al retornar cargarYDetectar.<br/>El SELECT del histórico y la detección ocurren<br/>DENTRO de la misma transacción, no después
+        App-->>Api: ResultadoServicio(contratosNuevos, totalEnBd,<br/>duplicadosIgnorados, List~FilaDescartada~, List~Alerta~)
         Api-->>Cliente: 200 OK (JSON)
     end
 ```
+
+Comprobación de los nueve requisitos de la tarea:
+
+| Requisito | Cómo se cumple |
+|---|---|
+| Solo la rebanada elegida | No aparece ningún flujo de consulta, exportación ni tablero |
+| Empieza fuera del proceso | El actor es un cliente HTTP, no una clase del sistema |
+| Llega a persistencia real | `PostgreSQL` es el último participante; no hay dobles de prueba |
+| Muestra el retorno | Cada ida tiene su vuelta, hasta `200 OK (JSON)` |
+| Un participante por frontera | 5 participantes + actor; Migración justificada arriba |
+| Dónde empieza/termina la transacción | Dos notas: `INICIO` tras entrar a `cargarYDetectar`, `COMMIT` al retornar. La rama de error marca `ROLLBACK` |
+| Dónde ocurre el mapeo | Tres notas `MAPEO`: dos de ida (dominio → JPA) y una de vuelta (JPA → dominio) |
+| Solo la ruta de error mínima | Una sola: columna requerida ausente → 400. No se modelan timeouts, conflictos ni fallos de red |
+| Ningún participante sin evidencia | `ContratoControlador`, `ContratoServicio` y los repositorios **no tienen respaldo en los insumos** y están declarados como vacíos de fidelidad en §6 |
 
 ---
 
 ## 3 · Diagrama de clases
 
-Solo las clases que aparecen como participantes o mensajes en la sección 2 — mismo criterio del documento original. Actualizado a los nombres reales de `java/src/main/java/dac/`. `ContratoRepositorio` / `ContratoRepositorioJDBC` no existen en esta implementación: Spring Data JPA genera la implementación de cada repositorio a partir de la interfaz, así que no hay una clase de implementación manual que modelar. `ContratoControlador`, `DetectorDeReincidencias` y `Alerta` sí aparecen ahora como participantes de la sección 2 (a diferencia del diseño original de la Candidata A), así que se incluyen aquí.
+Contiene **exclusivamente** las clases que aparecen como participantes o mensajes en §2, incluidos los tipos de retorno (`ResultadoCarga`, `ResultadoServicio`, `FilaDescartada`) y las cuatro entidades JPA que aparecen en las notas de mapeo. Las clases del modelo de dominio que **no** aparecen en la secuencia —`Entidad`, `Contratista` y `Funcionario` como clases de dominio— quedan fuera a propósito: en esta rebanada solo existen como entidades de persistencia.
+
+Sobre puertos e implementaciones: los cuatro repositorios son **interfaces (puertos)**. No hay una clase de implementación que modelar porque Spring Data JPA la genera en tiempo de ejecución a partir de la interfaz. Eso es una decisión de arquitectura sin respaldo en los insumos, declarada en §6.
 
 ```mermaid
 classDiagram
     class ContratoControlador {
-        <<Entrada externa — @RestController>>
+        <<Entrada externa — @RestController — implementación>>
         +cargar(archivo MultipartFile) ResponseEntity~ResultadoServicio~
     }
 
     class ContratoServicio {
-        <<Aplicación — @Service>>
+        <<Aplicación — @Service — implementación>>
         +cargarYDetectar(csv InputStream) ResultadoServicio
     }
 
+    class ResultadoServicio {
+        <<Aplicación — record>>
+        -contratosNuevos int
+        -totalEnBd int
+        -duplicadosIgnorados int
+        -filasDescartadas List~FilaDescartada~
+        -alertas List~Alerta~
+    }
+
     class CargadorDeContratos {
-        <<Dominio — @Component>>
+        <<Dominio — @Component — implementación>>
         +cargarDesde(stream InputStream) ResultadoCarga
         -validarColumnas(encabezado List~String~) void
+    }
+
+    class ResultadoCarga {
+        <<Dominio — record>>
+        -contratos List~Contrato~
+        -filasDescartadas List~FilaDescartada~
+        -duplicadosIgnorados int
+        +cantidadDescartadas() int
+    }
+
+    class FilaDescartada {
+        <<Dominio — record>>
+        -fila int
+        -motivo String
     }
 
     class Contrato {
@@ -120,12 +173,14 @@ classDiagram
         -funcionario String
         -monto String
         -fecha String
+        +de(numero String, entidad String, contratista String, funcionario String, monto String, fecha String) Contrato
         +claveNatural() String
         +par() String
     }
 
     class DetectorDeReincidencias {
-        <<Dominio — @Component>>
+        <<Dominio — @Component — implementación>>
+        -umbral int
         +detectar(contratos List~Contrato~) List~Alerta~
     }
 
@@ -134,123 +189,268 @@ classDiagram
         -contratista String
         -funcionario String
         -evidencia List~Contrato~
+        +cantidadContratos() int
     }
 
     class EntidadRepo {
-        <<interface — Spring Data JPA>>
+        <<Persistencia — interface, puerto>>
         +findByNombre(nombre String) Optional~EntidadJpa~
+        +save(e EntidadJpa) EntidadJpa
     }
 
     class ContratistaRepo {
-        <<interface — Spring Data JPA>>
+        <<Persistencia — interface, puerto>>
         +findByNombre(nombre String) Optional~ContratistaJpa~
     }
 
     class FuncionarioRepo {
-        <<interface — Spring Data JPA>>
+        <<Persistencia — interface, puerto>>
         +findByNombre(nombre String) Optional~FuncionarioJpa~
     }
 
     class ContratoRepo {
-        <<interface — Spring Data JPA>>
+        <<Persistencia — interface, puerto>>
         +findByNumeroContratoAndEntidad(numero String, entidad EntidadJpa) Optional~ContratoJpa~
         +findAllConFetch() List~ContratoJpa~
     }
 
+    class EntidadJpa {
+        <<Persistencia — @Entity>>
+        -id Long
+        -nombre String
+    }
+
+    class ContratistaJpa {
+        <<Persistencia — @Entity>>
+        -id Long
+        -nombre String
+    }
+
+    class FuncionarioJpa {
+        <<Persistencia — @Entity>>
+        -id Long
+        -nombre String
+    }
+
+    class ContratoJpa {
+        <<Persistencia — @Entity>>
+        -id Long
+        -numeroContrato String
+        -monto BigDecimal
+        -fecha LocalDate
+    }
+
     ContratoControlador --> ContratoServicio : usa
+    ContratoControlador ..> ResultadoServicio : serializa a JSON
+
     ContratoServicio --> CargadorDeContratos : usa
     ContratoServicio --> DetectorDeReincidencias : usa
     ContratoServicio --> EntidadRepo : usa
     ContratoServicio --> ContratistaRepo : usa
     ContratoServicio --> FuncionarioRepo : usa
     ContratoServicio --> ContratoRepo : usa
-    CargadorDeContratos ..> Contrato : crea
-    DetectorDeReincidencias ..> Alerta : crea
-    Alerta --> Contrato : evidencia
+    ContratoServicio ..> ResultadoServicio : construye
+
+    CargadorDeContratos ..> ResultadoCarga : devuelve
+    ResultadoCarga o-- Contrato : cargados
+    ResultadoCarga o-- FilaDescartada : descartadas
+
+    DetectorDeReincidencias ..> Alerta : genera
+    Alerta o-- Contrato : evidencia
+
+    ResultadoServicio o-- Alerta : alertas
+    ResultadoServicio o-- FilaDescartada : filasDescartadas
+
+    EntidadRepo ..> EntidadJpa : gestiona
+    ContratistaRepo ..> ContratistaJpa : gestiona
+    FuncionarioRepo ..> FuncionarioJpa : gestiona
+    ContratoRepo ..> ContratoJpa : gestiona
+
+    ContratoJpa --> EntidadJpa : id_entidad
+    ContratoJpa --> ContratistaJpa : id_contratista
+    ContratoJpa --> FuncionarioJpa : id_funcionario
 ```
 
-> Nota: a diferencia del módulo Java plano (`java/src/dac/`), aquí `clavesVistas` **no es un campo de instancia** de `CargadorDeContratos` — es una variable local dentro de `procesar(...)`, así que solo deduplica filas dentro de un mismo archivo CSV. La idempotencia entre ejecuciones/archivos la garantiza la base de datos (`ContratoRepo.findByNumeroContratoAndEntidad` + `uq_contrato_clave_natural`), no la memoria del objeto.
+> **Nota sobre `clavesVistas`.** En el modelo de dominio (`docs/diagrama-dominio.md:27`) es un campo de instancia de `CargadorDeContratos`. En esta implementación es una **variable local** dentro de `procesar(...)`, así que solo deduplica filas dentro de un mismo archivo. La idempotencia entre ejecuciones la garantiza la base de datos (`ContratoRepo.findByNumeroContratoAndEntidad` + `uq_contrato_clave_natural`), no la memoria del objeto. Por eso el campo no aparece en el diagrama.
 
 ---
 
 ## 4 · Contrato de la prueba única
 
-**Nombre:** `e2e_carga_persiste_y_es_idempotente`
+**Nombre:** `e2e_carga_persiste_y_es_idempotente` — implementada en `java/src/test/java/dac/ContratoE2ETest.java`.
 
-**Punto de entrada:** llamada directa a `ContratoServicio.cargarYDetectar(InputStream csv)` con el contenedor `dac_db` corriendo (`docker compose up -d db`) y `java/src/main/resources/application.properties` apuntando a él. Es el mismo método que invoca `POST /api/contratos/cargar`; la prueba lo llama directamente en vez de levantar el servidor HTTP completo, porque no existe (ni existió nunca) un `Main` que reciba la ruta del CSV como argumento — ver sección 6.
+**Punto de entrada:** `POST /api/contratos/cargar` sobre **HTTP real**. La prueba levanta la aplicación con `@SpringBootTest(webEnvironment = RANDOM_PORT)`, es decir Tomcat embebido escuchando en un socket, y envía el CSV como `multipart/form-data` con `TestRestTemplate`. No usa MockMvc ni ningún doble de prueba: entra por donde entra el actor externo de §2, como exige la característica "real y ejecutable" del esqueleto andante.
 
-**Precondición de datos:** tablas `entidad`, `contratista`, `funcionario` y `contrato` vacías. `docker-compose.yml` siembra datos de ejemplo al iniciar el contenedor (`db/datos.sql`), así que la prueba las trunca explícitamente antes de cada corrida (`TRUNCATE ... RESTART IDENTITY CASCADE`) — no es lógica de negocio, es preparación de la prueba. El CSV de ejemplo (`data/contratos_ejemplo.csv`) contiene 5 filas con claves naturales distintas y todas las columnas requeridas presentes.
+**Precondición de datos:** el contenedor `dac_db` corriendo (`docker compose up -d db`), con `db/schema.sql` ya aplicado. Las tablas `entidad`, `contratista`, `funcionario` y `contrato` deben estar vacías; como `docker-compose.yml` siembra `db/datos.sql` al crear el contenedor, la prueba las trunca en `@BeforeEach` (`TRUNCATE ... RESTART IDENTITY CASCADE`) — preparación de la prueba, no lógica de negocio. El CSV de ejemplo (`data/contratos_ejemplo.csv`) trae 5 filas con claves naturales distintas, las 6 columnas requeridas y ninguna fila incompleta.
 
-**Acción — primera ejecución:** llamar `cargarYDetectar` con el CSV de ejemplo.
-
-**Aserción observable:**
-1. `ResultadoServicio.contratosNuevos() == 5` y `totalEnBd() == 5`.
-2. `ContratoRepo.count() == 5`.
-3. `EntidadRepo.count() == 2`.
-
-**Acción — segunda ejecución (idempotencia HU-07):** volver a llamar `cargarYDetectar` con el mismo CSV, BD intacta.
+**Acción — primera carga:** `POST` del CSV de ejemplo.
 
 **Aserción observable:**
-1. `ResultadoServicio.contratosNuevos() == 0` y `totalEnBd() == 5`.
-2. `ContratoRepo.count()` sigue devolviendo `5`.
 
-**Estado esperado en BD:** 5 filas en `contrato`, cada una con FK válida a `entidad`, `contratista` y `funcionario`. Cero filas duplicadas.
+1. HTTP `200 OK`.
+2. En el JSON: `contratosNuevos == 5`, `totalEnBd == 5`, `duplicadosIgnorados == 0`, `filasDescartadas` vacío.
+3. En el JSON: exactamente `1` alerta, con `contratista == "ACME SAS"`, `funcionario == "Juan Pérez"` y `3` contratos de evidencia.
+4. En la base de datos: `contrato` tiene 5 filas y `entidad` tiene 2.
+5. En la base de datos, una fila concreta: el contrato `003` de `Gobernación Ejemplo` existe con contratista `ACME SAS`, funcionario `Juan Pérez`, monto `45000000.00` y fecha `2026-03-05`, resuelto por las tres FK.
 
-**Verificación por frontera:**
+**Acción — segunda carga (idempotencia, HU-07):** el mismo `POST` con el mismo CSV, sin limpiar la base.
 
-| Frontera | La prueba la detecta si se rompe |
+**Aserción observable:** HTTP `200 OK`; `contratosNuevos == 0`, `totalEnBd == 5`; `contrato` sigue con 5 filas y `entidad` con 2.
+
+**Estado esperado en BD:** 5 filas en `contrato`, cada una con FK válida a `entidad`, `contratista` y `funcionario`; 2 en `entidad`, 3 en `contratista`, 3 en `funcionario`; cero duplicados.
+
+### Verificación por frontera
+
+| Frontera | La prueba falla si se rompe |
 |---|---|
-| Entrada externa (HTTP) | **No cubierta por esta prueba.** `ContratoServicioE2ETest` llama directamente a `ContratoServicio.cargarYDetectar(...)`, sin pasar por `ContratoControlador`. Un fallo específico del controlador (ruta `/api/contratos/cargar` mal mapeada, parámetro `archivo` renombrado, manejo de excepciones→`400` roto) no sería detectado por esta prueba — ver vacío en sección 6. |
-| Aplicación | `ContratoServicio` no invoca los repos → `ContratoRepo.count()` queda en 0, aserción 2 falla |
-| Dominio | `validarColumnas` falla → `IllegalArgumentException`, COUNT en BD = 0 |
-| Mapeo dominio→JPA | `save` mal formado → error de Hibernate/constraint o COUNT ≠ 5 |
-| Driver JDBC / Hikari | Conexión rechazada → error visible, aserción 2 falla |
-| Migración | Tabla inexistente → `relation does not exist`, aserción 2 falla |
-| Base de datos | PostgreSQL apagado → connection refused, aserción 2 falla |
-| Respuesta | `ResultadoServicio` con campos en 0 o incorrectos → aserción 1 falla |
+| Entrada externa (HTTP) | **Sí.** La prueba hace un `POST` real: si la ruta cambia, si el parámetro deja de llamarse `archivo` o si el multipart no se resuelve, la respuesta no es `200` y falla la aserción 1 |
+| Aplicación | **Sí.** Si `ContratoServicio` no invoca los repositorios, `contrato` queda en 0 y falla la aserción 4 |
+| Mapeo dominio ↔ persistencia | **Sí.** Si el mapeo se corrompe o cruza las FK, la aserción 5 falla aunque el COUNT cuadre |
+| Driver JDBC / Hikari | **Sí.** Conexión rechazada → el contexto de Spring no arranca o el `POST` responde 500 |
+| Migración | **Sí.** Sin `db/schema.sql` aplicado: `relation "contrato" does not exist` ya en el `TRUNCATE` del `@BeforeEach` |
+| Base de datos | **Sí.** Con PostgreSQL apagado, `connection refused` |
+| Respuesta | **Sí.** El JSON se deserializa y se compara campo por campo, incluido el contenido de la alerta |
 
-**Frontera con riesgo residual:** si `findAllConFetch()` devuelve filas en orden distinto o con valores corruptos pero el COUNT es correcto, la aserción de cantidad pasa. Se mitiga añadiendo una aserción sobre el `numeroContrato` de al menos una fila específica del CSV (pendiente, no implementada aún en `ContratoServicioE2ETest`).
+Dos pruebas complementarias acompañan a la prueba única. No forman parte de este contrato, pero viven en el mismo archivo:
+
+- `rechaza_csv_sin_columnas_requeridas` — cubre la rama `alt` de §2: un CSV sin las 6 columnas requeridas (R-1) responde `400` y deja `contrato` en 0 filas.
+- `carga_filas_incompletas_sin_invalidar_el_archivo` — cubre R-6 y HU-04 sobre `data/contratos_incompletos_ejemplo.csv`: 4 contratos cargados, 3 filas descartadas con su motivo, 1 duplicado ignorado, la reincidencia real intacta y el contrato `107` persistido con `monto` y `fecha` en `NULL`. Existe por lo que se cuenta en §6.E.
+
+### Fronteras que pueden romperse sin que la prueba lo detecte
+
+Declaradas, no resueltas:
+
+1. **Canalización de despliegue.** No existe pipeline de CI/CD. Nada verifica que la rebanada compile y pase en un entorno limpio; hoy depende de que cada integrante tenga Maven, Docker y el contenedor arriba.
+2. **El artefacto empaquetado.** La prueba corre dentro del contexto de Spring, no contra `java -jar target/dac-0.0.1-SNAPSHOT.jar`. Si el empaquetado se rompe, la prueba sigue pasando.
+3. **Persistencia de alertas.** `alerta` y `alerta_contrato` nunca se escriben desde el módulo Java (ver §6), así que ninguna aserción las mira. Si ese camino se rompiera, la prueba no lo notaría.
+4. **Concurrencia.** Dos cargas simultáneas del mismo CSV: la idempotencia se apoya en un `SELECT` previo al `INSERT` dentro de la transacción, y el respaldo real es `uq_contrato_clave_natural`. La prueba es secuencial y no ejercita esa carrera.
 
 ---
 
 ## 5 · Trazabilidad
 
-Toda fila apunta a contenido existente y verificable en el repositorio.
+Cada fila apunta a un **insumo de modelado** con su línea verificable. Los elementos de §2 y §3 que no tienen origen en los insumos **no aparecen en esta tabla**: están en §6, como exige la regla de fidelidad.
 
 | Elemento del diagrama | Archivo de origen | Línea / sección |
 |---|---|---|
-| `ContratoControlador` | `java/src/main/java/dac/api/ContratoControlador.java` | `class ContratoControlador` |
-| `cargar(MultipartFile archivo)` / `POST /api/contratos/cargar` | `java/src/main/java/dac/api/ContratoControlador.java` | operación de `ContratoControlador` |
-| `ContratoServicio` | `java/src/main/java/dac/aplicacion/ContratoServicio.java` | `class ContratoServicio` |
-| `cargarYDetectar(InputStream csv)` | `java/src/main/java/dac/aplicacion/ContratoServicio.java` | operación de `ContratoServicio` |
-| `CargadorDeContratos` | `java/src/main/java/dac/dominio/CargadorDeContratos.java` | `class CargadorDeContratos` |
-| `cargarDesde(InputStream stream)` | `java/src/main/java/dac/dominio/CargadorDeContratos.java` | operación de `CargadorDeContratos` |
-| `validarColumnas()` | `java/src/main/java/dac/dominio/CargadorDeContratos.java` | método privado |
-| `Contrato` | `java/src/main/java/dac/dominio/Contrato.java` | `record Contrato` |
-| `claveNatural()` / `par()` | `java/src/main/java/dac/dominio/Contrato.java` | operaciones de `Contrato` |
-| `DetectorDeReincidencias` | `java/src/main/java/dac/dominio/DetectorDeReincidencias.java` | `class DetectorDeReincidencias` |
-| `Alerta` | `java/src/main/java/dac/dominio/Alerta.java` | `record Alerta` |
-| `EntidadRepo`, `ContratistaRepo`, `FuncionarioRepo`, `ContratoRepo` | `java/src/main/java/dac/persistencia/*Repo.java` | interfaces `JpaRepository` |
-| `ContratoRepo.findByNumeroContratoAndEntidad` (idempotencia, R-2) | `java/src/main/java/dac/persistencia/ContratoRepo.java` | método de la interfaz |
-| `uq_contrato_clave_natural` (respaldo de idempotencia en BD) | `db/schema.sql` | `CONSTRAINT uq_contrato_clave_natural` |
-| `tabla entidad` / `contratista` / `funcionario` / `contrato` | `db/schema.sql` | `CREATE TABLE ...` |
-| R-1 (6 columnas requeridas) | `docs/reglas-de-negocio.md` | R-1 |
-| R-2 (clave natural = numero_contrato + entidad) | `docs/problema-duro.md` | §3 — Decisión: la clave natural |
-| Idempotencia entre ejecuciones | `docs/historias-usuario.md` | HU-07, criterios 1 y 2 |
-| JOIN entidad/contratista/funcionario en SELECT | `docs/esquema-bd.md` | Modelo lógico — relaciones CONTRATO → ENTIDAD, CONTRATISTA, FUNCIONARIO |
-| **Prueba única implementada** | `java/src/test/java/dac/ContratoServicioE2ETest.java` | `e2e_carga_persiste_y_es_idempotente` |
+| `Contrato` | `docs/diagrama-dominio.md` | línea 18 — `class Contrato` |
+| `Contrato.claveNatural()` | `docs/diagrama-dominio.md` | línea 22 |
+| `Contrato.par()` | `docs/diagrama-dominio.md` | línea 23 |
+| Clave natural = `numeroContrato` + entidad (R-2) | `docs/problema-duro.md` | §3 "Decisión: la clave natural", línea 31 |
+| Clave natural como regla enunciada | `docs/reglas-de-negocio.md` | R-2, línea 36 |
+| `CargadorDeContratos` | `docs/diagrama-dominio.md` | línea 26 — `class CargadorDeContratos` |
+| `validarColumnas(List~String~)` | `docs/diagrama-dominio.md` | línea 29 |
+| Las 6 columnas requeridas (R-1) | `docs/reglas-de-negocio.md` | R-1, línea 26 |
+| CSV como entrada del flujo | `docs/historias-usuario.md` | HU-01, línea 32 |
+| CSV como alcance del MVP | `docs/vision-producto.md` | §6 punto 1, línea 75 |
+| `FilaDescartada` / `filasDescartadas` | `docs/reglas-de-negocio.md` | R-6, línea 91 |
+| Filas incompletas no generan alertas | `docs/historias-usuario.md` | HU-04, línea 142 |
+| `DetectorDeReincidencias` | `docs/diagrama-dominio.md` | línea 33 |
+| `umbral` | `docs/diagrama-dominio.md` | línea 34 |
+| `detectar(List~Contrato~) List~Alerta~` | `docs/diagrama-dominio.md` | línea 35 |
+| Reincidencia = mismo par en 2+ contratos (R-3) | `docs/reglas-de-negocio.md` | R-3, línea 45 |
+| `Alerta` | `docs/diagrama-dominio.md` | línea 38 |
+| `Alerta.evidencia` con 2..* contratos | `docs/diagrama-dominio.md` | líneas 39 y 52; nota en línea 57 |
+| `Alerta.cantidadContratos()` | `docs/diagrama-dominio.md` | línea 40 |
+| La alerta describe coincidencia, no culpa (R-4) | `docs/reglas-de-negocio.md` | R-4, línea 71 |
+| Tablas `entidad`, `contratista`, `funcionario`, `contrato` | `docs/esquema-bd.md` | §1 modelo conceptual, líneas 31-53; §2 modelo lógico, línea 69 |
+| Modelo físico de esas tablas | `db/schema.sql` | líneas 28, 40, 51, 63 |
+| FK `contrato` → `entidad` / `contratista` / `funcionario` | `docs/esquema-bd.md` | líneas 24-26 (relaciones del ER) |
+| `JOIN` del `SELECT` del histórico | `docs/esquema-bd.md` | líneas 24-26 (las mismas relaciones) |
+| `uq_contrato_clave_natural` | `docs/esquema-bd.md` | líneas 132 y 146 |
+| `uq_contrato_clave_natural` en físico | `db/schema.sql` | línea 78 |
+| Segunda carga sin duplicar (idempotencia) | `docs/historias-usuario.md` | HU-07, criterios 1 y 2, líneas 258-261 |
+| `monto` y `fecha` como texto en `Contrato` | `docs/reglas-de-negocio.md` | R-8, línea 136 |
+
+### Dónde está implementado cada elemento
+
+Tabla auxiliar, no parte de la trazabilidad a los insumos: sirve para abrir el código en la defensa.
+
+| Elemento | Implementación |
+|---|---|
+| `ContratoControlador` | `java/src/main/java/dac/api/ContratoControlador.java` |
+| `ContratoServicio` / `ResultadoServicio` | `java/src/main/java/dac/aplicacion/` |
+| `CargadorDeContratos`, `Contrato`, `DetectorDeReincidencias`, `Alerta`, `ResultadoCarga`, `FilaDescartada` | `java/src/main/java/dac/dominio/` |
+| Los 4 `*Repo` y las 4 `*Jpa` | `java/src/main/java/dac/persistencia/` |
+| La prueba única y la ruta de error | `java/src/test/java/dac/ContratoE2ETest.java` |
+| Migración y datos de ejemplo | `db/schema.sql`, `db/datos.sql`, `docker-compose.yml` |
 
 ---
 
 ## 6 · VACÍOS DETECTADOS
 
-| Elemento necesario para la rebanada | Archivo donde debería estar | Estado |
+### A. Elementos del diagrama sin respaldo en los insumos
+
+Se verificó por búsqueda directa que **ningún insumo menciona HTTP, REST, endpoint, repositorio, puerto, adaptador ni JPA**. Todo lo siguiente es decisión de implementación, no derivación de las evidencias:
+
+| Elemento | Archivo donde debería estar | Qué falta |
 |---|---|---|
-| ~~`Main` (clase de la capa Aplicación) no aparece en ningún insumo de modelado~~ | — | **Ya no aplica.** El punto de entrada real de la implementación es HTTP (`POST /api/contratos/cargar` vía `ContratoControlador` → `ContratoServicio`), no un CLI. No se construyó ni se planea construir un `Main` que reciba la ruta del CSV como argumento. |
-| ~~`ContratoRepositorio` / `ContratoRepositorioJDBC` no existen~~ | — | **Ya no aplica tal como estaba redactado.** No hay un puerto manual ni una implementación JDBC hecha a mano: Spring Data JPA genera la implementación de `EntidadRepo`, `ContratistaRepo`, `FuncionarioRepo` y `ContratoRepo` a partir de las interfaces. Es una decisión de arquitectura distinta a la del diagrama original, no un vacío pendiente. |
-| **Punto de entrada cambió de CLI a HTTP respecto al diseño original de esta rebanada** | `esqueleto/rebanada.md` (este documento, secciones 2 y 4) | **Nuevo.** La sección 4 original asumía `java -cp java/build dac.Main data/contratos_ejemplo.csv`. La versión que efectivamente persiste en PostgreSQL real es la de Spring Boot (`java/src/main/java/dac/`), que solo expone un endpoint HTTP — el módulo plano (`java/src/dac/`) nunca llegó a conectar con la base de datos (ver comparación previa). Se optó por documentar y probar la versión que sí cumple el objetivo central de la rebanada (cruzar la frontera de persistencia real) en vez de terminar el CLI original, que habría duplicado el trabajo de conexión JDBC ya resuelto por Spring Data. |
-| **La rebanada real incluye detección (`DetectorDeReincidencias`), no solo carga + persistencia** | `esqueleto/rebanada.md` §1 (Candidata A) | **Nuevo.** La Candidata A se eligió explícitamente *sin* detección para no bloquear la validación de persistencia. `ContratoServicio.cargarYDetectar` terminó incluyéndola de todas formas, dentro de la misma transacción. Funcionalmente el resultado se parece más a la Candidata B en alcance (aunque sin persistir la alerta ni su evidencia en las tablas `alerta`/`alerta_contrato` — eso sigue pendiente). No se revirtió esta decisión porque ya está implementada y probada; se deja registrada como divergencia respecto al análisis original. |
-| Persistencia de alertas (`alerta`, `alerta_contrato`) | `java/src/main/java/dac/aplicacion/ContratoServicio.java` | **Sigue pendiente.** `ContratoServicio` detecta y devuelve las alertas en la respuesta HTTP, pero no las inserta en `alerta`/`alerta_contrato`. El esquema (`db/schema.sql`) ya las modela; falta el código que las guarde. |
-| Pruebas propias del módulo Spring Boot más allá de la prueba única | `java/src/test/java/dac/` | **Pendiente.** Solo existe `ContratoServicioE2ETest` (esta prueba). No hay pruebas unitarias de `CargadorDeContratos`, `DetectorDeReincidencias` ni de los repositorios en este árbol — las 26 pruebas equivalentes viven únicamente en el módulo plano (`java/test/dac/pruebas/`), que ya no se ejecuta desde `java/ejecutar.sh` (ver comparación previa entre ambos módulos). |
-| Prueba de integración HTTP real, a través de `ContratoControlador` | `java/src/test/java/dac/` | **Pendiente.** `ContratoServicioE2ETest` (sección 4) prueba `ContratoServicio` directamente; ninguna prueba ejercita `POST /api/contratos/cargar` de punta a punta (ej. vía `MockMvc` o `TestRestTemplate`). La frontera "Entrada externa (HTTP)" del contrato de prueba no está cubierta hoy — ver la fila correspondiente en la tabla de verificación por frontera, sección 4. |
-| Los archivos de insumos fueron entregados con nombres distintos a los del repositorio: `backlog.md` → `historias-usuario.md`; `domain-model.md` → `diagrama-dominio.md`; `data-model.md` → `esquema-bd.md` | Los archivos del repositorio deberían renombrarse o la tarea debe actualizar los nombres de referencia | Sin cambios — no relacionado con la migración a Spring Boot. |
+| `POST /api/contratos/cargar` y `ContratoControlador` | `docs/historias-usuario.md` (HU-01 / HU-07) o un `docs/api.md` que no existe | Ninguna historia define interfaz de entrada. HU-01 dice "desde un archivo CSV" sin decir cómo llega el archivo. El endpoint se inventó al implementar |
+| `ContratoServicio` (capa de aplicación) | `docs/diagrama-dominio.md` | El modelo de dominio no tiene capa de aplicación ni clase orquestadora |
+| `ResultadoServicio` | `docs/diagrama-dominio.md` | No existe en ningún insumo; es el DTO de la respuesta HTTP |
+| `EntidadRepo`, `ContratistaRepo`, `FuncionarioRepo`, `ContratoRepo` | `docs/diagrama-dominio.md` | El modelo no define repositorios ni puertos de persistencia |
+| `findAllConFetch()` | `docs/esquema-bd.md` | Ninguna consulta está especificada en los insumos |
+| `ResultadoCarga` | `docs/diagrama-dominio.md` línea 28 | El insumo dice que la carga devuelve `List~Contrato~`. El tipo que agrupa cargados + descartados no está modelado, aunque R-6 y HU-04 exigen reportar los descartes |
+| `EntidadJpa`, `ContratistaJpa`, `FuncionarioJpa`, `ContratoJpa` | `docs/esquema-bd.md` | Las **tablas** sí están respaldadas (§5). El mapeo objeto-relacional y estas clases no aparecen en ningún insumo |
+| Transacción: `@Transactional`, INICIO / COMMIT / ROLLBACK | `docs/reglas-de-negocio.md` o `docs/problema-duro.md` | No hay ningún requisito de atomicidad escrito. La transacción aparece en §2 porque la tarea obliga a marcarla, no porque un insumo la pida |
+
+### B. Divergencias entre el insumo y la implementación
+
+| Insumo dice | La implementación hace | Estado |
+|---|---|---|
+| `cargarDesdeCSV(String ruta)` — `diagrama-dominio.md:28` | `cargarDesde(InputStream)` | La firma cambió de ruta de archivo a stream para poder recibir un `multipart`. Consecuencia directa del endpoint HTTP no respaldado (grupo A) |
+| `clavesVistas` como campo de instancia — `diagrama-dominio.md:27` | Variable local en `procesar(...)` | Deduplica solo dentro de un archivo. La idempotencia entre ejecuciones la sostiene la BD (HU-07) |
+| `Contrato.monto: Decimal`, `fecha: Date` — `diagrama-dominio.md:20-21` | `String` en el record de dominio, `BigDecimal` / `LocalDate` solo en `ContratoJpa` | Declarado como deuda en R-8 (`reglas-de-negocio.md:136`). La conversión ocurre en el mapeo a persistencia |
+| `Contrato` se relaciona con `Entidad`, `Contratista` y `Funcionario` por asociación — `diagrama-dominio.md:44-46` | El record aplana los tres a `String` | Las asociaciones reaparecen en la capa de persistencia como FK |
+| `Alerta.mostrar()` — `diagrama-dominio.md:41` | No existe | La presentación la hace el serializador JSON. No aparece en §2, así que no se modeló en §3 |
+| La rebanada elegida (Candidata A) excluye la detección | `cargarYDetectar` detecta dentro de la misma transacción | Ver §1: divergencia declarada respecto al criterio de selección |
+
+### C. Pendientes de la rebanada
+
+| Pendiente | Dónde debería estar | Estado |
+|---|---|---|
+| Persistir alertas en `alerta` y `alerta_contrato` | `java/src/main/java/dac/aplicacion/ContratoServicio.java` | El esquema ya las modela (`db/schema.sql:105` y `131`) y el módulo Python ya las escribe (`src/repositorio.py`). El módulo Java las detecta y las devuelve en el JSON, pero no las guarda |
+| Canalización de CI/CD | No existe | El enunciado la nombra como una de las razones del esqueleto andante. Hoy la rebanada solo se verifica a mano |
+| Prueba contra el artefacto empaquetado | `java/src/test/java/dac/` | La prueba corre en el contexto de Spring, no contra `java -jar target/...` |
+| Pruebas unitarias del módulo Spring Boot | `java/src/test/java/dac/` | Solo existe la prueba e2e. Las 26 del módulo plano (`java/test/dac/pruebas/`) ya no se ejecutan: Maven solo compila `src/main/java` y `src/test/java` |
+| Carga concurrente | — | Ver §4, riesgo residual 4 |
+
+### D. Nombres de los insumos
+
+Los insumos se entregaron con nombres distintos a los del repositorio: `backlog.md` → `docs/historias-usuario.md`; `domain-model.md` → `docs/diagrama-dominio.md`; `data-model.md` → `docs/esquema-bd.md`. Todas las citas de §5 usan los nombres reales del repositorio.
+
+### E. Lo que la rebanada destapó
+
+Construir la rebanada sirvió para lo que el enunciado promete —**reducción temprana de riesgos**— y encontró una contradicción entre tres evidencias que el análisis en papel no había visto:
+
+| Evidencia | Qué decía |
+|---|---|
+| `docs/reglas-de-negocio.md:101-102` (R-6) | *"Qué **no** descarta la fila: `monto` y `fecha` vacíos. La señal no los usa (R-8) y descartar por ellos perdería reincidencias reales."* |
+| `docs/esquema-bd.md:107-108` (modelo lógico) | `decimal monto` y `date fecha`, **sin marca de obligatorio**, a diferencia de PK, FK y UK que sí están marcadas |
+| `db/schema.sql` (modelo físico, versión anterior) | `monto NUMERIC(15,2) **NOT NULL**`, `fecha DATE **NOT NULL**` |
+
+Consecuencia observada al ejecutar la rebanada: la fila 107 de `data/contratos_incompletos_ejemplo.csv` (monto y fecha vacíos) pasaba la validación del dominio, llegaba al mapeo, `new BigDecimal("")` lanzaba `NumberFormatException` —que es una `IllegalArgumentException`— y el controlador respondía **`400` para el archivo completo**. Es exactamente el comportamiento que la [Decisión 12](../docs/decisiones-tecnicas.md) descarta: *"invalidar el archivo deja al analista sin nada por una fila mala entre cinco mil"*.
+
+**Cómo se resolvió, sin inventar reglas:** el `NOT NULL` no tenía respaldo en ninguna evidencia, así que se quitó del modelo físico y el mapeo convierte el vacío en `NULL` ([Decisión 17](../docs/decisiones-tecnicas.md)). No se tocó ninguna regla de negocio: R-6 ya decía qué debía pasar, y ahora el código lo cumple. La prueba `carga_filas_incompletas_sin_invalidar_el_archivo` lo fija.
+
+Este hallazgo es el argumento más concreto a favor del esqueleto andante en este proyecto: la contradicción estaba escrita en tres documentos revisados y solo apareció cuando el dato cruzó la frontera de persistencia real.
+
+---
+
+## 7 · Cómo reproducirlo
+
+Verificado el 16 de septiembre de 2026 con Java 26, Maven 3.9 y PostgreSQL 16 en Docker:
+
+```bash
+docker compose up -d db          # aplica db/schema.sql y siembra db/datos.sql
+cd java && mvn test              # la prueba única + las dos complementarias
+```
+
+Resultado obtenido: `Tests run: 3, Failures: 0, Errors: 0` — `BUILD SUCCESS`.
+
+Para levantar la rebanada y ejercitarla a mano:
+
+```bash
+java/ejecutar.sh                 # Tomcat en localhost:8080
+curl -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
+```

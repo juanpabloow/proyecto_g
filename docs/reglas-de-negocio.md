@@ -113,9 +113,14 @@ número de fila. El resto del archivo se analiza igual.
 > alerta sobre nadie. La duplicación es deliberada y está registrada en
 > la [Decisión 13](decisiones-tecnicas.md).
 
-- Código: `java/src/dac/CargadorDeContratos.java` → `CAMPOS_OBLIGATORIOS`
-- Pruebas: `java/test/dac/pruebas/PruebasFilasIncompletas.java`
+- Código: `java/src/main/java/dac/dominio/CargadorDeContratos.java` → `CAMPOS_OBLIGATORIOS`
+- Prueba: `java/src/test/java/dac/ContratoE2ETest.java` →
+  `carga_filas_incompletas_sin_invalidar_el_archivo`
 - Historia: [HU-04](historias-usuario.md)
+- **En la frontera de persistencia:** que `monto` y `fecha` vacíos no
+  descarten la fila obliga a que las columnas admitan `NULL`. El modelo
+  físico lo exigía al revés y rompía la carga completa; corregido en la
+  [Decisión 17](decisiones-tecnicas.md).
 
 ## R-7 — Los datos reales no entran al repositorio **[Implementada]**
 
