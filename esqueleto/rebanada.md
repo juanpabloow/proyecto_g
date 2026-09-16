@@ -26,13 +26,17 @@ La Candidata B se descarta porque agrega tres reglas de negocio adicionales (R-3
 
 > **Nota (post-implementación, migración a Spring Boot):** la Candidata A elegida aquí excluía la detección a propósito. La implementación real que terminó construyéndose (`java/src/main/java/dac/`, HU-07) incluye `DetectorDeReincidencias` dentro del mismo `ContratoServicio.cargarYDetectar`, es decir, se acerca más a la Candidata B en alcance funcional — aunque conserva las mismas 5 fronteras técnicas. Ver sección 6 para el detalle de esta divergencia.
 
-### Fronteras que cruza la Candidata A
+### Candidata A extendida (formalización post-implementación)
+
+La rebanada que terminó implementándose y probándose (`java/src/main/java/dac/`, HU-07, `ContratoServicioE2ETest`) se declara formalmente **Candidata A extendida**: conserva las 5 fronteras técnicas de A exactamente como se justificaron arriba —mismo número de capas que B, sin integración adicional— pero incorpora el comportamiento de detección de `DetectorDeReincidencias` que la Candidata A original excluía a propósito. No se revirtió el código para ajustarlo al diseño original porque la detección ya quedó implementada dentro de la misma transacción de `cargarYDetectar` y con su prueba pasando; revertirla habría descartado trabajo ya validado sin necesidad. La extensión no agrega ninguna frontera técnica nueva (sigue habiendo 5), solo amplía lo que ocurre dentro de la frontera de Dominio — ver fila 3 de la tabla siguiente y el detalle en sección 6.
+
+### Fronteras que cruza la Candidata A extendida
 
 | # | Frontera | Qué ocurre |
 |---|---|---|
 | 1 | Entrada externa | Cliente HTTP invoca `POST /api/contratos/cargar`, recibido por `ContratoControlador` |
 | 2 | Aplicación | `ContratoServicio` orquesta la rebanada |
-| 3 | Dominio | `CargadorDeContratos` construye objetos `Contrato` con clave natural |
+| 3 | Dominio | `CargadorDeContratos` construye objetos `Contrato` con clave natural; `DetectorDeReincidencias` detecta reincidencia sobre el histórico (extensión respecto a la Candidata A original — ver nota arriba) |
 | 4 | Persistencia real | JDBC escribe y lee en PostgreSQL (mapeo dominio ↔ SQL) |
 | 5 | Migración | `db/schema.sql` debe estar aplicado para que existan las tablas |
 
@@ -65,6 +69,7 @@ sequenceDiagram
         Note over Per,DB: @Transactional
         App->>Per: EntidadRepo / ContratistaRepo / FuncionarioRepo:<br/>findByNombre(...).orElseGet(save) por cada contrato
         Per->>DB: SELECT / INSERT si no existe
+        Note over Per: mapeo dominio → JPA<br/>(Contrato → EntidadJpa/ContratistaJpa/<br/>FuncionarioJpa/ContratoJpa — R-2)
         App->>Per: ContratoRepo.findByNumeroContratoAndEntidad(...)<br/>→ save(nuevo ContratoJpa) solo si no existe (R-2, idempotencia)
         Per->>DB: SELECT + INSERT condicional<br/>(uq_contrato_clave_natural como respaldo)
         Note over Per,DB: COMMIT (fin de cargarYDetectar)
@@ -72,6 +77,7 @@ sequenceDiagram
         App->>Per: ContratoRepo.findAllConFetch()
         Per->>DB: SELECT contrato JOIN entidad, contratista, funcionario
         DB-->>Per: ResultSet
+        Note over Per: mapeo JPA → dominio<br/>(List~ContratoJpa~ → List~Contrato~)
         Per-->>App: List~Contrato~ (histórico completo)
 
         App->>Dom: DetectorDeReincidencias.detectar(histórico)
@@ -194,7 +200,7 @@ classDiagram
 
 | Frontera | La prueba la detecta si se rompe |
 |---|---|
-| Entrada externa (HTTP/servicio) | `cargarYDetectar` no recibe el stream → excepción antes de tocar Dominio |
+| Entrada externa (HTTP) | **No cubierta por esta prueba.** `ContratoServicioE2ETest` llama directamente a `ContratoServicio.cargarYDetectar(...)`, sin pasar por `ContratoControlador`. Un fallo específico del controlador (ruta `/api/contratos/cargar` mal mapeada, parámetro `archivo` renombrado, manejo de excepciones→`400` roto) no sería detectado por esta prueba — ver vacío en sección 6. |
 | Aplicación | `ContratoServicio` no invoca los repos → `ContratoRepo.count()` queda en 0, aserción 2 falla |
 | Dominio | `validarColumnas` falla → `IllegalArgumentException`, COUNT en BD = 0 |
 | Mapeo dominio→JPA | `save` mal formado → error de Hibernate/constraint o COUNT ≠ 5 |
@@ -246,4 +252,5 @@ Toda fila apunta a contenido existente y verificable en el repositorio.
 | **La rebanada real incluye detección (`DetectorDeReincidencias`), no solo carga + persistencia** | `esqueleto/rebanada.md` §1 (Candidata A) | **Nuevo.** La Candidata A se eligió explícitamente *sin* detección para no bloquear la validación de persistencia. `ContratoServicio.cargarYDetectar` terminó incluyéndola de todas formas, dentro de la misma transacción. Funcionalmente el resultado se parece más a la Candidata B en alcance (aunque sin persistir la alerta ni su evidencia en las tablas `alerta`/`alerta_contrato` — eso sigue pendiente). No se revirtió esta decisión porque ya está implementada y probada; se deja registrada como divergencia respecto al análisis original. |
 | Persistencia de alertas (`alerta`, `alerta_contrato`) | `java/src/main/java/dac/aplicacion/ContratoServicio.java` | **Sigue pendiente.** `ContratoServicio` detecta y devuelve las alertas en la respuesta HTTP, pero no las inserta en `alerta`/`alerta_contrato`. El esquema (`db/schema.sql`) ya las modela; falta el código que las guarde. |
 | Pruebas propias del módulo Spring Boot más allá de la prueba única | `java/src/test/java/dac/` | **Pendiente.** Solo existe `ContratoServicioE2ETest` (esta prueba). No hay pruebas unitarias de `CargadorDeContratos`, `DetectorDeReincidencias` ni de los repositorios en este árbol — las 26 pruebas equivalentes viven únicamente en el módulo plano (`java/test/dac/pruebas/`), que ya no se ejecuta desde `java/ejecutar.sh` (ver comparación previa entre ambos módulos). |
+| Prueba de integración HTTP real, a través de `ContratoControlador` | `java/src/test/java/dac/` | **Pendiente.** `ContratoServicioE2ETest` (sección 4) prueba `ContratoServicio` directamente; ninguna prueba ejercita `POST /api/contratos/cargar` de punta a punta (ej. vía `MockMvc` o `TestRestTemplate`). La frontera "Entrada externa (HTTP)" del contrato de prueba no está cubierta hoy — ver la fila correspondiente en la tabla de verificación por frontera, sección 4. |
 | Los archivos de insumos fueron entregados con nombres distintos a los del repositorio: `backlog.md` → `historias-usuario.md`; `domain-model.md` → `diagrama-dominio.md`; `data-model.md` → `esquema-bd.md` | Los archivos del repositorio deberían renombrarse o la tarea debe actualizar los nombres de referencia | Sin cambios — no relacionado con la migración a Spring Boot. |
