@@ -7,7 +7,7 @@ es el puente entre la ejecución y la BD.
 
 Conexión vía variables de entorno:
   DB_HOST     (default: localhost)
-  DB_PORT     (default: 5432)
+  DB_PORT     (default: 5433)
   DB_NAME     (default: dac)
   DB_USER     (default: dac_user)
   DB_PASSWORD (default: dac_pass)

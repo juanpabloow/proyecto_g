@@ -18,48 +18,73 @@ una alerta es una hipótesis a verificar por una persona
 | Yerson Andrés Pérez Cadena | Ingeniero de QA y pruebas | [ficha](docs/Equipo/yerson_cadena.md) |
 | Gerson Geovanni Rojo Rodríguez | Ingeniero de requisitos y analista de negocio | [ficha](docs/Equipo/gerson_rojo.md) |
 
-## Estado actual (Semana 3)
+## Estado actual (Semana 4 — esqueleto andante)
 
-Esqueleto andante, funcionando de punta a punta:
+La primera rebanada vertical funciona de punta a punta y cruza las cinco
+fronteras técnicas: HTTP → aplicación → dominio → persistencia real →
+migración. El detalle, con su trazabilidad a las evidencias del proyecto,
+está en [esqueleto/rebanada.md](esqueleto/rebanada.md).
 
-- Carga contratos desde CSV validando las columnas requeridas.
+- `POST /api/contratos/cargar` recibe el CSV y responde con los contratos
+  nuevos, el total en base de datos, las filas descartadas y las alertas.
+- Persiste en **PostgreSQL** real ([db/schema.sql](db/schema.sql), 6 tablas).
 - **Problema duro resuelto:** un contrato duplicado no genera una alerta
-  falsa ([detalle](docs/problema-duro.md)).
-- Detecta la señal del MVP: reincidencia contratista–funcionario.
-- 12 pruebas automatizadas, todas pasando.
+  falsa ([detalle](docs/problema-duro.md)). Y ahora la clave natural es una
+  restricción de la base, así que la idempotencia también vale **entre
+  ejecuciones** ([HU-07](docs/historias-usuario.md)).
+- Detecta la señal del MVP: reincidencia contratista–funcionario, sobre el
+  histórico completo en base de datos.
+- **[HU-04](docs/historias-usuario.md):** una fila sin contratista o sin
+  funcionario no produce una alerta sobre nadie — se descarta y se reporta
+  ([Decisión 12](docs/decisiones-tecnicas.md)).
+- 12 pruebas en Python y la prueba única de la rebanada en Java (por HTTP
+  real, contra la base de datos real), todas pasando.
 
-El [módulo Java](java/) agrega **[HU-04](docs/historias-usuario.md)**: una
-fila sin contratista o sin funcionario ya no produce una alerta sobre
-nadie — se descarta y se reporta ([Decisión 12](docs/decisiones-tecnicas.md)).
-Es la única diferencia funcional entre los dos; la duplicación es
-deliberada y está registrada en la
-[Decisión 13](docs/decisiones-tecnicas.md).
+Hay **dos implementaciones** y la duplicación es deliberada: Python
+(`src/`) y el backend de la rebanada en Java + Spring Boot (`java/`). Ver
+[Decisión 13](docs/decisiones-tecnicas.md) y
+[Decisión 14](docs/decisiones-tecnicas.md).
 
 ## Cómo correrlo
+
+**La base de datos** (requiere Docker):
+
+```bash
+docker compose up -d db      # PostgreSQL 16 en localhost:5433, esquema y datos aplicados
+```
 
 **Python** (`src/`):
 
 ```bash
-pip install pytest
-python3 main.py          # flujo completo con los datos de ejemplo
-python3 -m pytest -v     # las 12 pruebas
+pip install -r requirements.txt
+python3 main.py              # flujo completo contra la base de datos
+python3 -m pytest -v         # las 12 pruebas (en memoria, no necesitan la BD)
 ```
 
-**Java** (`java/`, requiere JDK 21+; no necesita Maven ni Gradle):
+**Java** (`java/`, requiere JDK 21+ y Maven):
 
 ```bash
-java/ejecutar.sh         # las 26 pruebas y luego el flujo completo
+cd java && mvn test          # la prueba única de la rebanada, por HTTP real
+java/ejecutar.sh             # levanta el endpoint en localhost:8080
 ```
 
-Salida esperada en ambos: 5 contratos cargados y 1 alerta
-(`ACME SAS` + `Juan Pérez`, con 3 contratos como evidencia).
+Con el servidor arriba, la rebanada completa en un comando:
+
+```bash
+curl -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
+```
+
+Responde `contratosNuevos`, `totalEnBd`, `filasDescartadas` y `alertas`.
+Llamarlo dos veces devuelve `contratosNuevos: 0` la segunda: eso es HU-07.
 
 Para ver HU-04 hace falta un archivo con filas incompletas — el de
 ejemplo no las tiene:
 
 ```bash
-java/ejecutar.sh main data/contratos_incompletos_ejemplo.csv
+curl -F archivo=@data/contratos_incompletos_ejemplo.csv http://localhost:8080/api/contratos/cargar
 ```
+
+En `filasDescartadas` viene cada fila que no se cargó y por qué.
 
 > Los datos de `data/contratos_ejemplo.csv` son **ficticios**. Los
 > archivos con datos reales van en `data/privado/`, que no se sube al
@@ -73,6 +98,7 @@ dónde buscar algo.
 | Documento | Qué responde |
 |---|---|
 | [Mapa del proyecto](docs/mapa-del-proyecto.md) | Dónde está cada cosa, cómo funciona de punta a punta, qué falta |
+| [Rebanada del esqueleto andante](esqueleto/rebanada.md) | La primera rebanada ejecutable: secuencia, clases, la prueba única, trazabilidad y vacíos declarados |
 | [Visión del producto](docs/vision-producto.md) | Qué problema resuelve, para quién, alcance y métricas de éxito |
 | [Stakeholders](docs/stakeholders.md) | Quiénes están involucrados y qué exige cada uno del diseño |
 | [Problema duro](docs/problema-duro.md) | Idempotencia: por qué es el problema duro y hasta dónde está resuelto |

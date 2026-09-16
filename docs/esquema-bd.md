@@ -141,6 +141,16 @@ erDiagram
 | `CONTRATISTA` / `FUNCIONARIO` – `ALERTA` | 1 : N | La alerta señala a **un par** de los dos ([R-3](reglas-de-negocio.md)) |
 | `ALERTA` – `CONTRATO` | **N : M** | Una alerta se apoya en 2 o más contratos, y un contrato puede ser evidencia de varias alertas |
 
+## `monto` y `fecha` admiten `NULL`, a propósito
+
+Son los dos únicos atributos de `CONTRATO` sin marca de obligatorio, y no
+es un olvido: [R-6](reglas-de-negocio.md) dice que una fila con `monto` o
+`fecha` vacíos **no se descarta**, porque la señal de reincidencia no los
+usa ([R-3](reglas-de-negocio.md), [R-8](reglas-de-negocio.md)) y
+descartarla perdería reincidencias reales. Si la columna fuera `NOT NULL`,
+esa fila no podría guardarse y la carga entera fallaría
+([Decisión 17](decisiones-tecnicas.md)).
+
 ## Dos restricciones que sostienen el modelo lógico
 
 1. **`UNIQUE (numero_contrato, id_entidad)` en `CONTRATO`.** Es la clave

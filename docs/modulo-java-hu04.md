@@ -4,6 +4,18 @@ Documento para el equipo. Explica qué entrega el módulo `java/`, por qué
 está hecho así, cómo se relaciona con el resto del backlog y cómo
 demostrar que funciona.
 
+> **Actualizado a Spring Boot ([Decisión 14](decisiones-tecnicas.md)).** El
+> módulo Java plano que describía la versión anterior de este documento
+> (`java/src/dac/` + `java/test/dac/pruebas/`, con su arnés propio de 26
+> pruebas) **quedó huérfano**: Maven solo compila `src/main/java` y
+> `src/test/java`, así que ese árbol ya no se construye ni se ejecuta.
+> Sigue en el repositorio y resolverlo es el pendiente 1 del
+> [mapa del proyecto](mapa-del-proyecto.md).
+>
+> HU-04 hoy vive en `java/src/main/java/dac/dominio/CargadorDeContratos.java`
+> y se demuestra por HTTP, no por consola. El comportamiento no cambió: las
+> cifras de §8 son las mismas, verificadas contra el endpoint real.
+
 ---
 
 ## 1. Qué entrega
@@ -65,7 +77,7 @@ pendiente de confirmar con un analista real, y la casilla está sin marcar
 en el DoD de HU-04.
 
 Revertirla cuesta una línea: la lista `CAMPOS_OBLIGATORIOS` en
-`java/src/dac/CargadorDeContratos.java:47`.
+`java/src/main/java/dac/dominio/CargadorDeContratos.java:21`.
 
 ## 4. Qué se descarta exactamente
 
@@ -148,44 +160,61 @@ del [problema duro](problema-duro.md).
 
 ### Las clases
 
-| Archivo | Qué hace |
-|---|---|
-| `Contrato.java` | Los 6 campos + `claveNatural()` y `par()`. Conserva las columnas extra (R-1) |
-| `Alerta.java` | Par señalado + evidencia. **Rechaza construirse con menos de 2 contratos** |
-| `FilaDescartada.java` | Una fila que no se cargó, con su número de fila y el motivo |
-| `ResultadoCarga.java` | Las dos salidas de la carga: lo cargado y lo descartado |
-| `LectorCSV.java` | CSV con comillas y comas dentro de campos |
-| `CargadorDeContratos.java` | Validación + **HU-04** + idempotencia |
-| `DetectorDeReincidencias.java` | La señal del MVP (R-3) |
-| `Main.java` | El flujo de punta a punta |
+Todas en `java/src/main/java/dac/`:
+
+| Archivo | Capa | Qué hace |
+|---|---|---|
+| `dominio/Contrato.java` | Dominio | Los 6 campos + `claveNatural()` y `par()`. Conserva las columnas extra (R-1) |
+| `dominio/Alerta.java` | Dominio | Par señalado + evidencia. **Rechaza construirse con menos de 2 contratos** |
+| `dominio/FilaDescartada.java` | Dominio | Una fila que no se cargó, con su número de fila y el motivo |
+| `dominio/ResultadoCarga.java` | Dominio | Las dos salidas de la carga: lo cargado y lo descartado |
+| `dominio/LectorCSV.java` | Dominio | CSV con comillas y comas dentro de campos |
+| `dominio/CargadorDeContratos.java` | Dominio | Validación + **HU-04** + idempotencia dentro del archivo |
+| `dominio/DetectorDeReincidencias.java` | Dominio | La señal del MVP (R-3) |
+| `aplicacion/ContratoServicio.java` | Aplicación | El flujo de punta a punta: carga → persiste → detecta. Delimita la transacción |
+| `aplicacion/ResultadoServicio.java` | Aplicación | Lo que sale por HTTP: nuevos, total en BD, duplicados, descartadas y alertas |
+| `api/ContratoControlador.java` | Entrada externa | `POST /api/contratos/cargar`. Traduce la excepción del dominio a `400` |
+| `persistencia/*Repo.java` | Persistencia | 4 repositorios Spring Data (entidad, contratista, funcionario, contrato) |
+| `persistencia/*Jpa.java` | Persistencia | 4 entidades JPA: el mapeo a las tablas de `db/schema.sql` |
+
+`Main.java` ya no existe: el punto de entrada es el endpoint HTTP.
 
 ### Dos detalles que conviene conocer
 
-1. **`clavesVistas` es un campo de instancia**, tal como está en el
-   [diagrama de dominio](diagrama-dominio.md). Consecuencia: el mismo
-   `CargadorDeContratos` reconoce un contrato ya cargado aunque venga en
-   otro archivo. Sigue sin sobrevivir al cierre del programa — eso es
-   [HU-07](historias-usuario.md) y necesita base de datos.
-2. **No hay JUnit.** No tenemos Maven ni Gradle instalados, y bajar JUnit
-   a mano para 26 pruebas cuesta más que el arnés de `Pruebas.java`, que
-   son 100 líneas. Cuando adoptemos un gestor de dependencias, cada
-   `caso("...", () -> {...})` se vuelve un `@Test` sin tocar las
-   aserciones.
+1. **`clavesVistas` es ahora una variable local**, no un campo de
+   instancia como en el [diagrama de dominio](diagrama-dominio.md). Solo
+   deduplica dentro de un mismo archivo. La idempotencia entre archivos y
+   entre ejecuciones la garantiza la base de datos
+   (`uq_contrato_clave_natural`), que es lo que cerró
+   [HU-07](historias-usuario.md). La divergencia está declarada en
+   [rebanada §6.B](../esqueleto/rebanada.md).
+2. **Sí hay JUnit.** Con Maven ([Decisión 14](decisiones-tecnicas.md)) las
+   pruebas son JUnit 5 y corren contra PostgreSQL real. El arnés propio de
+   `Pruebas.java` dejó de usarse junto con el módulo plano.
+3. **`monto` y `fecha` vacíos llegan a la base como `NULL`.** Es lo que
+   R-6 exige y lo que el modelo físico impedía; ver
+   [Decisión 17](decisiones-tecnicas.md).
 
 ## 7. Cómo ejecutarlo
 
-Solo hace falta un **JDK 21 o superior**. Nada de Maven ni Gradle.
+Hace falta un **JDK 21 o superior**, **Maven** y **Docker**.
 
 ```bash
-java/ejecutar.sh            # las 26 pruebas y después el flujo completo
-java/ejecutar.sh pruebas    # solo las pruebas
-java/ejecutar.sh main       # solo el análisis, con el CSV de ejemplo
+docker compose up -d db     # PostgreSQL en localhost:5433
+cd java && mvn test         # las pruebas de punta a punta
+java/ejecutar.sh            # levanta el endpoint en localhost:8080
+```
+
+Con el servidor arriba, el análisis se pide por HTTP:
+
+```bash
+curl -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
 ```
 
 Con otro archivo:
 
 ```bash
-java/ejecutar.sh main data/privado/contratos_reales.csv
+curl -F archivo=@data/privado/contratos_reales.csv http://localhost:8080/api/contratos/cargar
 ```
 
 Tres cosas que importan:
@@ -196,10 +225,10 @@ Tres cosas que importan:
    conservan.
 2. Los datos reales van en `data/privado/`, que está en `.gitignore`
    ([R-7](reglas-de-negocio.md)). Nunca al repositorio.
-3. Las rutas relativas se resuelven desde la raíz del repo, porque el
-   script se para ahí. Desde otra carpeta, usar ruta absoluta.
+3. Las rutas del `curl` se resuelven desde donde lo ejecutes: `@` es una
+   ruta del cliente, no del servidor.
 
-El script compila en `java/build/`, que está ignorado por Git.
+Maven compila en `java/target/`, que está ignorado por Git.
 
 ## 8. Cómo demostrar que funciona
 
@@ -228,22 +257,37 @@ sola fila no se vería el defecto.
 ### Paso 2 — correr el análisis
 
 ```bash
-java/ejecutar.sh main data/contratos_incompletos_ejemplo.csv
+curl -s -F archivo=@data/contratos_incompletos_ejemplo.csv \
+  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
 ```
 
-```
-Contratos cargados: 4
-Duplicados ignorados: 1 (mismo número de contrato en la misma entidad — R-2)
-Filas descartadas: 3 (el resto del archivo se analiza igual — Decisión 12)
-   - fila 5: faltan los campos contratista, funcionario
-   - fila 6: faltan los campos contratista, funcionario
-   - fila 7: falta el campo funcionario
-Alertas encontradas: 1
+Salida real, con las tablas vacías antes de la carga:
 
-[!] ACME SAS + Juan Pérez
-   - Contrato 101 (Alcaldía de Ejemplo, 2026-01-15, $50000000)
-   - Contrato 103 (Gobernación Ejemplo, 2026-03-05, $45000000)
+```json
+{
+  "contratosNuevos": 4,
+  "totalEnBd": 4,
+  "duplicadosIgnorados": 1,
+  "filasDescartadas": [
+    { "fila": 5, "motivo": "faltan los campos contratista, funcionario" },
+    { "fila": 6, "motivo": "faltan los campos contratista, funcionario" },
+    { "fila": 7, "motivo": "falta el campo funcionario" }
+  ],
+  "alertas": [
+    {
+      "contratista": "ACME SAS",
+      "funcionario": "Juan Pérez",
+      "evidencia": [
+        { "numeroContrato": "101", "entidad": "Alcaldía de Ejemplo", "monto": "50000000", "fecha": "2026-01-15" },
+        { "numeroContrato": "103", "entidad": "Gobernación Ejemplo", "monto": "45000000", "fecha": "2026-03-05" }
+      ]
+    }
+  ]
+}
 ```
+
+*(la evidencia se muestra recortada: cada contrato trae también
+`contratista`, `funcionario` y `camposAdicionales`)*
 
 **Tres cosas para señalar en voz alta:**
 
@@ -256,27 +300,36 @@ Alertas encontradas: 1
 
 Nótese también que la fila 8 (`107`) **sí se cargó** aunque tiene monto y
 fecha vacíos: la señal no los usa, y descartarla habría perdido un
-contrato válido.
+contrato válido. Queda en la base con `monto` y `fecha` en `NULL`
+([Decisión 17](decisiones-tecnicas.md)) — y conseguir eso obligó a
+corregir el modelo físico, que los exigía obligatorios y hacía fallar el
+archivo completo con un `400`.
 
 ### Paso 3 — mostrar las pruebas
 
 ```bash
-java/ejecutar.sh pruebas
+cd java && mvn test
 ```
 
-Los casos están nombrados como los criterios de aceptación, así que la
-pantalla misma muestra la trazabilidad **historia → prueba**:
+```
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
 
-```
-HU-04 - No generar alertas a partir de filas incompletas  <-- la historia
-  [ok]  criterio 1: dos filas sin contratista ni funcionario no generan alerta
-  [ok]  criterio 2: informa cuántas filas se descartaron y por qué
-  [ok]  una fila incompleta no invalida el archivo (Decisión 12)
-  [ok]  una celda con solo espacios cuenta como vacía
-  [ok]  una fila sin clave natural se descarta: no se puede deduplicar (R-2)
-  [ok]  monto y fecha vacíos NO descartan la fila (R-8)
-  [ok]  una línea en blanco no se reporta como fila descartada
-```
+La prueba que cubre HU-04 es
+`carga_filas_incompletas_sin_invalidar_el_archivo`, y sus aserciones son
+los criterios de aceptación, uno por uno:
+
+| Aserción | Criterio |
+|---|---|
+| `alertas` trae 1 elemento, y es la reincidencia real | Criterio 1: las filas sin contratista ni funcionario no generan alerta |
+| `filasDescartadas` trae 3, cada una con `fila` y `motivo` | Criterio 2: informa cuántas y por qué |
+| El código HTTP es `200` | Decisión 12: el archivo sigue siendo válido |
+| El contrato `107` está en la base con `monto` y `fecha` en `NULL` | R-6: monto y fecha vacíos no descartan la fila |
+
+> Las 26 pruebas del arnés propio (`java/test/dac/pruebas/`) cubrían estos
+> mismos casos con más granularidad, pero **ya no se ejecutan**. Portarlas
+> a JUnit es trabajo pendiente: ver §10.
 
 ## 9. Qué NO hace este módulo
 
@@ -302,14 +355,15 @@ Las mismas limitaciones del MVP, salvo HU-04:
 |---|---|---|
 | 1 | **Confirmar la Decisión 12 con un analista real (S-1).** Si dice que una fila incompleta debe invalidar el archivo, la decisión cambia | Rol de requisitos |
 | 2 | **Consolidar Python y Java en un solo lenguaje.** Hoy HU-04 está solo en Java y `src/` conserva el comportamiento de R-6. La duplicación es deliberada y está en la [Decisión 13](decisiones-tecnicas.md) | Equipo |
+| 3 | **Portar a JUnit las 26 pruebas del módulo plano.** Quedaron fuera del build con la [Decisión 14](decisiones-tecnicas.md); hoy HU-04 se verifica con una sola prueba de punta a punta, no con siete casos | Rol de pruebas |
 
 ## 11. Qué mirar según tu rol
 
 | Rol | Empieza por |
 |---|---|
 | **Requisitos y negocio** (Gerson) | §3 (la decisión), §4 (qué se descarta) y §10. La Decisión 12 necesita tu gestión con S-1 |
-| **QA y pruebas** (Yerson) | §5 (por qué hay 26 pruebas y no 7) y §8 paso 3. Los nombres de los casos son los criterios de aceptación |
-| **Backend** (Juan Pablo) | §6 (cómo funciona por dentro) y `java/src/dac/CargadorDeContratos.java` |
+| **QA y pruebas** (Yerson) | §8 paso 3 y el pendiente 3 de §10: las 26 pruebas quedaron fuera del build y hay que portarlas |
+| **Backend** (Juan Pablo) | §6 (cómo funciona por dentro) y `java/src/main/java/dac/dominio/CargadorDeContratos.java` |
 | **Cualquiera que solo quiera verlo correr** | §7 y §8 |
 
 ---
