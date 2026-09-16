@@ -10,3 +10,5 @@ venv/
 # `python3 main.py` no funciona en un clon nuevo.
 data/privado/*
 !data/privado/README.md
+
+java/target/
