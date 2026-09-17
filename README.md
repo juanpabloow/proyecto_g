@@ -48,7 +48,10 @@ implementación paralela en Python se consolidó aquí
 
 ## Cómo correrlo
 
-Requiere **Docker**, **JDK 21+** y **Maven**.
+Requiere **Docker**, **JDK 21+** y **Maven**. Los ejemplos con `curl`
+canalizan la respuesta a [`jq`](https://jqlang.github.io/jq/) solo para
+leerla formateada: si no lo tienes, quita el `| jq` y el comando funciona
+igual.
 
 ### 1. Levantar la base de datos
 
@@ -60,9 +63,7 @@ PostgreSQL 16 en `localhost:5433` y un visor web en `localhost:8081`.
 La primera vez crea las 6 tablas desde [db/schema.sql](db/schema.sql) y
 siembra datos de ejemplo desde [db/datos.sql](db/datos.sql).
 
-Para ver la base en el navegador: **http://localhost:8081** — servidor
-`db`, usuario `dac_user`, clave `dac_pass`, base `dac`. Muestra las
-tablas, los datos y el diagrama de relaciones sin escribir SQL.
+Para mirar lo que hay adentro, ve a [Ver los datos](#ver-los-datos).
 
 ### 2. Correr las pruebas
 
@@ -117,7 +118,7 @@ demostración desde cero.
 
 ```bash
 curl -s -F archivo=@data/contratos_ejemplo.csv \
-  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+  http://localhost:8080/api/contratos/cargar | jq
 ```
 
 → `contratosNuevos: 5`, `totalEnBd: 5`, **1 alerta**: `ACME SAS` +
@@ -130,7 +131,7 @@ Repite **exactamente el mismo comando**:
 
 ```bash
 curl -s -F archivo=@data/contratos_ejemplo.csv \
-  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+  http://localhost:8080/api/contratos/cargar | jq
 ```
 
 → `contratosNuevos: 0`, `totalEnBd: 5`. El archivo se cargó dos veces y
@@ -142,7 +143,7 @@ de la base de datos ([HU-07](docs/historias-usuario.md)).
 
 ```bash
 curl -s -F archivo=@data/contratos_incompletos_ejemplo.csv \
-  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+  http://localhost:8080/api/contratos/cargar | jq
 ```
 
 → `200 OK` con 4 contratos cargados, **3 filas descartadas con su número
@@ -161,14 +162,106 @@ curl -s -o /dev/null -w "HTTP %{http_code}\n" -F archivo=@/tmp/malo.csv \
 → `HTTP 400`, y la base queda intacta: una carga rechazada no escribe
 nada ([R-1](docs/reglas-de-negocio.md)).
 
-### Mostrarlo en el navegador
+### Mostrarlo en pantalla, no en números
 
-Con **http://localhost:8081** abierto en la tabla `contrato`, ejecuta el
-Momento 2 y refresca: **siguen 5 filas**. La idempotencia se ve, no solo
-se cuenta.
+Con el [visor web](#en-el-navegador) abierto en la tabla `contrato`,
+ejecuta el Momento 2 y refresca: **siguen 5 filas**. La idempotencia se
+ve, no solo se cuenta.
 
-Para mostrar el problema duro convertido en restricción: clic en
+Y para señalar el problema duro convertido en restricción: clic en
 `contrato` → *Mostrar estructura* → `uq_contrato_clave_natural`.
+
+## Ver los datos
+
+### En el navegador
+
+**http://localhost:8081** — servidor `db`, usuario `dac_user`, clave
+`dac_pass`, base `dac`. Clic en `contrato` → *Select data*. Las llaves
+foráneas son enlaces navegables: clic en un `id_contratista` y saltas al
+contratista.
+
+En la pantalla principal, el enlace **"Esquema de base de datos"** dibuja
+las 6 tablas con sus relaciones, generado desde la base real.
+
+### En la terminal, como tabla
+
+Todas las consultas están listas en [db/consultas.sql](db/consultas.sql):
+
+```bash
+docker exec -i dac_db psql -U dac_user -d dac < db/consultas.sql
+```
+
+**Los contratos con nombres en vez de identificadores:**
+
+```bash
+docker exec dac_db psql -U dac_user -d dac -c "
+SELECT c.numero_contrato AS num, e.nombre AS entidad, ct.nombre AS contratista,
+       f.nombre AS funcionario, c.monto, c.fecha
+FROM contrato c
+JOIN entidad e      USING (id_entidad)
+JOIN contratista ct USING (id_contratista)
+JOIN funcionario f  USING (id_funcionario)
+ORDER BY e.nombre, c.numero_contrato;"
+```
+
+```
+ num |       entidad       |    contratista    | funcionario  |    monto    |   fecha
+-----+---------------------+-------------------+--------------+-------------+------------
+ 001 | Alcaldía de Ejemplo | ACME SAS          | Juan Pérez   | 50000000.00 | 2026-01-15
+ 002 | Alcaldía de Ejemplo | Otra Empresa Ltda | Ana Ruiz     | 30000000.00 | 2026-02-10
+ 004 | Alcaldía de Ejemplo | Constructora XYZ  | Carlos Gómez | 80000000.00 | 2026-03-20
+ 003 | Gobernación Ejemplo | ACME SAS          | Juan Pérez   | 45000000.00 | 2026-03-05
+ 005 | Gobernación Ejemplo | ACME SAS          | Juan Pérez   | 60000000.00 | 2026-04-01
+(5 rows)
+```
+
+**Las alertas con su evidencia** — cada fila es un contrato que sustenta
+la alerta:
+
+```bash
+docker exec dac_db psql -U dac_user -d dac -c "
+SELECT a.tipo, ct.nombre AS contratista, f.nombre AS funcionario,
+       c.numero_contrato AS evidencia, e.nombre AS entidad
+FROM alerta a
+JOIN contratista ct     USING (id_contratista)
+JOIN funcionario f      USING (id_funcionario)
+JOIN alerta_contrato ac USING (id_alerta)
+JOIN contrato c         USING (id_contrato)
+JOIN entidad e          USING (id_entidad)
+ORDER BY c.numero_contrato;"
+```
+
+```
+     tipo     | contratista | funcionario | evidencia |       entidad
+--------------+-------------+-------------+-----------+---------------------
+ REINCIDENCIA | ACME SAS    | Juan Pérez  | 001       | Alcaldía de Ejemplo
+ REINCIDENCIA | ACME SAS    | Juan Pérez  | 003       | Gobernación Ejemplo
+ REINCIDENCIA | ACME SAS    | Juan Pérez  | 005       | Gobernación Ejemplo
+(3 rows)
+```
+
+Las tres filas son la respuesta a *"¿por qué me estás señalando a esta
+pareja?"*. Dos de esos contratos son de la gobernación y uno de la
+alcaldía: la señal cruza instituciones (R-3).
+
+**Un conteo rápido de todo:**
+
+```bash
+docker exec dac_db psql -U dac_user -d dac -c "
+SELECT (SELECT count(*) FROM contrato)        AS contratos,
+       (SELECT count(*) FROM alerta)          AS alertas,
+       (SELECT count(*) FROM alerta_contrato) AS evidencia;"
+```
+
+**Sesión interactiva**, para explorar a mano:
+
+```bash
+docker exec -it dac_db psql -U dac_user -d dac
+```
+
+Dentro: `\dt` lista las tablas, `\d contrato` muestra su estructura con
+las restricciones —ahí se ve `uq_contrato_clave_natural`, el problema
+duro— y `\q` sale.
 
 ## Si algo falla
 
