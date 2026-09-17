@@ -48,7 +48,10 @@ implementación paralela en Python se consolidó aquí
 
 ## Cómo correrlo
 
-Requiere **Docker**, **JDK 21+** y **Maven**.
+Requiere **Docker**, **JDK 21+** y **Maven**. Los ejemplos con `curl`
+canalizan la respuesta a [`jq`](https://jqlang.github.io/jq/) solo para
+leerla formateada: si no lo tienes, quita el `| jq` y el comando funciona
+igual.
 
 ### 1. Levantar la base de datos
 
@@ -117,7 +120,7 @@ demostración desde cero.
 
 ```bash
 curl -s -F archivo=@data/contratos_ejemplo.csv \
-  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+  http://localhost:8080/api/contratos/cargar | jq
 ```
 
 → `contratosNuevos: 5`, `totalEnBd: 5`, **1 alerta**: `ACME SAS` +
@@ -130,7 +133,7 @@ Repite **exactamente el mismo comando**:
 
 ```bash
 curl -s -F archivo=@data/contratos_ejemplo.csv \
-  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+  http://localhost:8080/api/contratos/cargar | jq
 ```
 
 → `contratosNuevos: 0`, `totalEnBd: 5`. El archivo se cargó dos veces y
@@ -142,7 +145,7 @@ de la base de datos ([HU-07](docs/historias-usuario.md)).
 
 ```bash
 curl -s -F archivo=@data/contratos_incompletos_ejemplo.csv \
-  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+  http://localhost:8080/api/contratos/cargar | jq
 ```
 
 → `200 OK` con 4 contratos cargados, **3 filas descartadas con su número
