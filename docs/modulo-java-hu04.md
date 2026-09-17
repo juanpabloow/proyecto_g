@@ -251,7 +251,7 @@ sola fila no se vería el defecto.
 
 ```bash
 curl -s -F archivo=@data/contratos_incompletos_ejemplo.csv \
-  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+  http://localhost:8080/api/contratos/cargar | jq
 ```
 
 Salida real, con las tablas vacías antes de la carga:
