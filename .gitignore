@@ -1,14 +1,8 @@
-__pycache__/
-java/build/
-*.py[cod]
-.venv/
-venv/
-.env
 .DS_Store
+java/target/
+
 # Datos reales / sensibles: nunca al repositorio (regla R-7).
 # El CSV de ejemplo (data/contratos_ejemplo.csv) SÍ se versiona: sin él
-# `python3 main.py` no funciona en un clon nuevo.
+# las pruebas de punta a punta no funcionan en un clon nuevo.
 data/privado/*
 !data/privado/README.md
-
-java/target/

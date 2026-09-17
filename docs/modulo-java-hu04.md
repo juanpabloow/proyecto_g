@@ -4,17 +4,11 @@ Documento para el equipo. Explica qué entrega el módulo `java/`, por qué
 está hecho así, cómo se relaciona con el resto del backlog y cómo
 demostrar que funciona.
 
-> **Actualizado a Spring Boot ([Decisión 14](decisiones-tecnicas.md)).** El
-> módulo Java plano que describía la versión anterior de este documento
-> (`java/src/dac/` + `java/test/dac/pruebas/`, con su arnés propio de 26
-> pruebas) **quedó huérfano**: Maven solo compila `src/main/java` y
-> `src/test/java`, así que ese árbol ya no se construye ni se ejecuta.
-> Sigue en el repositorio y resolverlo es el pendiente 1 del
-> [mapa del proyecto](mapa-del-proyecto.md).
->
-> HU-04 hoy vive en `java/src/main/java/dac/dominio/CargadorDeContratos.java`
-> y se demuestra por HTTP, no por consola. El comportamiento no cambió: las
-> cifras de §8 son las mismas, verificadas contra el endpoint real.
+> **Actualizado a Spring Boot ([Decisión 14](decisiones-tecnicas.md)) y
+> consolidado en un solo lenguaje ([Decisión 18](decisiones-tecnicas.md)).**
+> HU-04 vive en `java/src/main/java/dac/dominio/CargadorDeContratos.java`
+> y se demuestra por HTTP, no por consola. El comportamiento no cambió:
+> las cifras de §8 son las mismas, verificadas contra el endpoint real.
 
 ---
 
@@ -188,9 +182,8 @@ Todas en `java/src/main/java/dac/`:
    (`uq_contrato_clave_natural`), que es lo que cerró
    [HU-07](historias-usuario.md). La divergencia está declarada en
    [rebanada §6.B](../esqueleto/rebanada.md).
-2. **Sí hay JUnit.** Con Maven ([Decisión 14](decisiones-tecnicas.md)) las
-   pruebas son JUnit 5 y corren contra PostgreSQL real. El arnés propio de
-   `Pruebas.java` dejó de usarse junto con el módulo plano.
+2. **Las pruebas son JUnit 5.** Los 7 casos de HU-04 viven en
+   `FilasIncompletasTest` y sus nombres son los criterios de aceptación.
 3. **`monto` y `fecha` vacíos llegan a la base como `NULL`.** Es lo que
    R-6 exige y lo que el modelo físico impedía; ver
    [Decisión 17](decisiones-tecnicas.md).
@@ -327,9 +320,21 @@ los criterios de aceptación, uno por uno:
 | El código HTTP es `200` | Decisión 12: el archivo sigue siendo válido |
 | El contrato `107` está en la base con `monto` y `fecha` en `NULL` | R-6: monto y fecha vacíos no descartan la fila |
 
-> Las 26 pruebas del arnés propio (`java/test/dac/pruebas/`) cubrían estos
-> mismos casos con más granularidad, pero **ya no se ejecutan**. Portarlas
-> a JUnit es trabajo pendiente: ver §10.
+Y los 7 casos de dominio, con más granularidad, en `FilasIncompletasTest`:
+
+```bash
+cd java && mvn test -Dtest=FilasIncompletasTest
+```
+
+```
+criterio 1: dos filas sin contratista ni funcionario no generan alerta
+criterio 2: informa cuántas filas se descartaron y por qué
+una fila incompleta no invalida el archivo (Decisión 12)
+una celda con solo espacios cuenta como vacía
+una fila sin clave natural se descarta: no se puede deduplicar (R-2)
+monto y fecha vacíos NO descartan la fila (R-6, R-8)
+una línea en blanco no se reporta como fila descartada
+```
 
 ## 9. Qué NO hace este módulo
 
@@ -354,15 +359,15 @@ Las mismas limitaciones del MVP, salvo HU-04:
 | # | Pendiente | De quién es |
 |---|---|---|
 | 1 | **Confirmar la Decisión 12 con un analista real (S-1).** Si dice que una fila incompleta debe invalidar el archivo, la decisión cambia | Rol de requisitos |
-| 2 | **Consolidar Python y Java en un solo lenguaje.** Hoy HU-04 está solo en Java y `src/` conserva el comportamiento de R-6. La duplicación es deliberada y está en la [Decisión 13](decisiones-tecnicas.md) | Equipo |
-| 3 | **Portar a JUnit las 26 pruebas del módulo plano.** Quedaron fuera del build con la [Decisión 14](decisiones-tecnicas.md); hoy HU-04 se verifica con una sola prueba de punta a punta, no con siete casos | Rol de pruebas |
+| 2 | ~~Consolidar Python y Java en un solo lenguaje~~ · **Hecho:** [Decisión 18](decisiones-tecnicas.md) | — |
+| 3 | ~~Portar a JUnit las pruebas del módulo plano~~ · **Hecho:** son `FilasIncompletasTest`, `CargadorDeContratosTest` y `DetectorDeReincidenciasTest` | — |
 
 ## 11. Qué mirar según tu rol
 
 | Rol | Empieza por |
 |---|---|
 | **Requisitos y negocio** (Gerson) | §3 (la decisión), §4 (qué se descarta) y §10. La Decisión 12 necesita tu gestión con S-1 |
-| **QA y pruebas** (Yerson) | §8 paso 3 y el pendiente 3 de §10: las 26 pruebas quedaron fuera del build y hay que portarlas |
+| **QA y pruebas** (Yerson) | §8 paso 3: los 7 casos de `FilasIncompletasTest` son los criterios de aceptación, uno por uno |
 | **Backend** (Juan Pablo) | §6 (cómo funciona por dentro) y `java/src/main/java/dac/dominio/CargadorDeContratos.java` |
 | **Cualquiera que solo quiera verlo correr** | §7 y §8 |
 

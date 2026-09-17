@@ -96,6 +96,10 @@ sequenceDiagram
         App->>Dom: DetectorDeReincidencias.detectar(histórico)
         Dom-->>App: List~Alerta~
 
+        App->>Per: AlertaRepo.findByContratistaAndFuncionarioAndTipo(...)<br/>→ save(AlertaJpa con su evidencia) por cada alerta
+        Note over Per: MAPEO dominio → persistencia<br/>Alerta → AlertaJpa + filas en alerta_contrato<br/>(HU-02: sin evidencia la alerta no vale nada)
+        Per->>DB: SELECT + INSERT condicional en alerta<br/>y alerta_contrato (uq_alerta_par)
+
         Note over App,DB: COMMIT — al retornar cargarYDetectar.<br/>El SELECT del histórico y la detección ocurren<br/>DENTRO de la misma transacción, no después
         App-->>Api: ResultadoServicio(contratosNuevos, totalEnBd,<br/>duplicadosIgnorados, List~FilaDescartada~, List~Alerta~)
         Api-->>Cliente: 200 OK (JSON)
@@ -112,7 +116,7 @@ Comprobación de los nueve requisitos de la tarea:
 | Muestra el retorno | Cada ida tiene su vuelta, hasta `200 OK (JSON)` |
 | Un participante por frontera | 5 participantes + actor; Migración justificada arriba |
 | Dónde empieza/termina la transacción | Dos notas: `INICIO` tras entrar a `cargarYDetectar`, `COMMIT` al retornar. La rama de error marca `ROLLBACK` |
-| Dónde ocurre el mapeo | Tres notas `MAPEO`: dos de ida (dominio → JPA) y una de vuelta (JPA → dominio) |
+| Dónde ocurre el mapeo | Cuatro notas `MAPEO`: tres de ida (dominio → JPA) y una de vuelta (JPA → dominio) |
 | Solo la ruta de error mínima | Una sola: columna requerida ausente → 400. No se modelan timeouts, conflictos ni fallos de red |
 | Ningún participante sin evidencia | `ContratoControlador`, `ContratoServicio` y los repositorios **no tienen respaldo en los insumos** y están declarados como vacíos de fidelidad en §6 |
 
@@ -214,6 +218,19 @@ classDiagram
         +findAllConFetch() List~ContratoJpa~
     }
 
+    class AlertaRepo {
+        <<Persistencia — interface, puerto>>
+        +findByContratistaAndFuncionarioAndTipo(c ContratistaJpa, f FuncionarioJpa, tipo String) Optional~AlertaJpa~
+    }
+
+    class AlertaJpa {
+        <<Persistencia — @Entity>>
+        -id Long
+        -tipo String
+        -generadaEn OffsetDateTime
+        -evidencia Set~ContratoJpa~
+    }
+
     class EntidadJpa {
         <<Persistencia — @Entity>>
         -id Long
@@ -249,6 +266,7 @@ classDiagram
     ContratoServicio --> ContratistaRepo : usa
     ContratoServicio --> FuncionarioRepo : usa
     ContratoServicio --> ContratoRepo : usa
+    ContratoServicio --> AlertaRepo : usa
     ContratoServicio ..> ResultadoServicio : construye
 
     CargadorDeContratos ..> ResultadoCarga : devuelve
@@ -265,6 +283,10 @@ classDiagram
     ContratistaRepo ..> ContratistaJpa : gestiona
     FuncionarioRepo ..> FuncionarioJpa : gestiona
     ContratoRepo ..> ContratoJpa : gestiona
+    AlertaRepo ..> AlertaJpa : gestiona
+    AlertaJpa --> ContratistaJpa : id_contratista
+    AlertaJpa --> FuncionarioJpa : id_funcionario
+    AlertaJpa o-- ContratoJpa : alerta_contrato
 
     ContratoJpa --> EntidadJpa : id_entidad
     ContratoJpa --> ContratistaJpa : id_contratista
@@ -322,7 +344,7 @@ Declaradas, no resueltas:
 
 1. **Canalización de despliegue.** No existe pipeline de CI/CD. Nada verifica que la rebanada compile y pase en un entorno limpio; hoy depende de que cada integrante tenga Maven, Docker y el contenedor arriba.
 2. **El artefacto empaquetado.** La prueba corre dentro del contexto de Spring, no contra `java -jar target/dac-0.0.1-SNAPSHOT.jar`. Si el empaquetado se rompe, la prueba sigue pasando.
-3. **Persistencia de alertas.** `alerta` y `alerta_contrato` nunca se escriben desde el módulo Java (ver §6), así que ninguna aserción las mira. Si ese camino se rompiera, la prueba no lo notaría.
+3. **La antigüedad de la alerta.** `generada_en` lo pone la base con `DEFAULT now()` y ninguna aserción lo mira.
 4. **Concurrencia.** Dos cargas simultáneas del mismo CSV: la idempotencia se apoya en un `SELECT` previo al `INSERT` dentro de la transacción, y el respaldo real es `uq_contrato_clave_natural`. La prueba es secuencial y no ejercita esa carrera.
 
 ---
@@ -359,6 +381,10 @@ Cada fila apunta a un **insumo de modelado** con su línea verificable. Los elem
 | `JOIN` del `SELECT` del histórico | `docs/esquema-bd.md` | líneas 24-26 (las mismas relaciones) |
 | `uq_contrato_clave_natural` | `docs/esquema-bd.md` | líneas 132 y 146 |
 | `uq_contrato_clave_natural` en físico | `db/schema.sql` | línea 78 |
+| Tablas `alerta` y `alerta_contrato` | `docs/esquema-bd.md` | §1 modelo conceptual, línea 50; §2 modelo lógico, línea 111 |
+| Relación N:M alerta–contrato (la evidencia) | `docs/esquema-bd.md` | línea 29 del ER y explicación en línea 63 |
+| `alerta` y `alerta_contrato` en físico | `db/schema.sql` | líneas 109 y 135 |
+| `uq_alerta_par` (una alerta por par y tipo) | `db/schema.sql` | línea 119 |
 | Segunda carga sin duplicar (idempotencia) | `docs/historias-usuario.md` | HU-07, criterios 1 y 2, líneas 258-261 |
 | `monto` y `fecha` como texto en `Contrato` | `docs/reglas-de-negocio.md` | R-8, línea 136 |
 
@@ -371,8 +397,9 @@ Tabla auxiliar, no parte de la trazabilidad a los insumos: sirve para abrir el c
 | `ContratoControlador` | `java/src/main/java/dac/api/ContratoControlador.java` |
 | `ContratoServicio` / `ResultadoServicio` | `java/src/main/java/dac/aplicacion/` |
 | `CargadorDeContratos`, `Contrato`, `DetectorDeReincidencias`, `Alerta`, `ResultadoCarga`, `FilaDescartada` | `java/src/main/java/dac/dominio/` |
-| Los 4 `*Repo` y las 4 `*Jpa` | `java/src/main/java/dac/persistencia/` |
+| Los 5 `*Repo` y las 5 `*Jpa` (incluida `AlertaJpa`) | `java/src/main/java/dac/persistencia/` |
 | La prueba única y la ruta de error | `java/src/test/java/dac/ContratoE2ETest.java` |
+| Las 25 pruebas de dominio | `java/src/test/java/dac/{CargadorDeContratos,DetectorDeReincidencias,FilasIncompletas}Test.java` |
 | Migración y datos de ejemplo | `db/schema.sql`, `db/datos.sql`, `docker-compose.yml` |
 
 ---
@@ -388,10 +415,10 @@ Se verificó por búsqueda directa que **ningún insumo menciona HTTP, REST, end
 | `POST /api/contratos/cargar` y `ContratoControlador` | `docs/historias-usuario.md` (HU-01 / HU-07) o un `docs/api.md` que no existe | Ninguna historia define interfaz de entrada. HU-01 dice "desde un archivo CSV" sin decir cómo llega el archivo. El endpoint se inventó al implementar |
 | `ContratoServicio` (capa de aplicación) | `docs/diagrama-dominio.md` | El modelo de dominio no tiene capa de aplicación ni clase orquestadora |
 | `ResultadoServicio` | `docs/diagrama-dominio.md` | No existe en ningún insumo; es el DTO de la respuesta HTTP |
-| `EntidadRepo`, `ContratistaRepo`, `FuncionarioRepo`, `ContratoRepo` | `docs/diagrama-dominio.md` | El modelo no define repositorios ni puertos de persistencia |
+| `EntidadRepo`, `ContratistaRepo`, `FuncionarioRepo`, `ContratoRepo`, `AlertaRepo` | `docs/diagrama-dominio.md` | El modelo no define repositorios ni puertos de persistencia |
 | `findAllConFetch()` | `docs/esquema-bd.md` | Ninguna consulta está especificada en los insumos |
 | `ResultadoCarga` | `docs/diagrama-dominio.md` línea 28 | El insumo dice que la carga devuelve `List~Contrato~`. El tipo que agrupa cargados + descartados no está modelado, aunque R-6 y HU-04 exigen reportar los descartes |
-| `EntidadJpa`, `ContratistaJpa`, `FuncionarioJpa`, `ContratoJpa` | `docs/esquema-bd.md` | Las **tablas** sí están respaldadas (§5). El mapeo objeto-relacional y estas clases no aparecen en ningún insumo |
+| `EntidadJpa`, `ContratistaJpa`, `FuncionarioJpa`, `ContratoJpa`, `AlertaJpa` | `docs/esquema-bd.md` | Las **tablas** sí están respaldadas (§5). El mapeo objeto-relacional y estas clases no aparecen en ningún insumo |
 | Transacción: `@Transactional`, INICIO / COMMIT / ROLLBACK | `docs/reglas-de-negocio.md` o `docs/problema-duro.md` | No hay ningún requisito de atomicidad escrito. La transacción aparece en §2 porque la tarea obliga a marcarla, no porque un insumo la pida |
 
 ### B. Divergencias entre el insumo y la implementación
@@ -409,10 +436,10 @@ Se verificó por búsqueda directa que **ningún insumo menciona HTTP, REST, end
 
 | Pendiente | Dónde debería estar | Estado |
 |---|---|---|
-| Persistir alertas en `alerta` y `alerta_contrato` | `java/src/main/java/dac/aplicacion/ContratoServicio.java` | El esquema ya las modela (`db/schema.sql:105` y `131`) y el módulo Python ya las escribe (`src/repositorio.py`). El módulo Java las detecta y las devuelve en el JSON, pero no las guarda |
+| ~~Persistir alertas en `alerta` y `alerta_contrato`~~ | — | **Hecho.** `ContratoServicio.guardarAlerta` las escribe con su evidencia; `uq_alerta_par` las hace idempotentes. Verificado en `e2e_carga_persiste_y_es_idempotente` |
 | Canalización de CI/CD | No existe | El enunciado la nombra como una de las razones del esqueleto andante. Hoy la rebanada solo se verifica a mano |
 | Prueba contra el artefacto empaquetado | `java/src/test/java/dac/` | La prueba corre en el contexto de Spring, no contra `java -jar target/...` |
-| Pruebas unitarias del módulo Spring Boot | `java/src/test/java/dac/` | Solo existe la prueba e2e. Las 26 del módulo plano (`java/test/dac/pruebas/`) ya no se ejecutan: Maven solo compila `src/main/java` y `src/test/java` |
+| ~~Pruebas unitarias del módulo Spring Boot~~ | — | **Hecho.** 25 pruebas de dominio en `CargadorDeContratosTest`, `DetectorDeReincidenciasTest` y `FilasIncompletasTest`, portadas del módulo plano y de la versión en Python al consolidar en un solo lenguaje ([Decisión 18](../docs/decisiones-tecnicas.md)) |
 | Carga concurrente | — | Ver §4, riesgo residual 4 |
 
 ### D. Nombres de los insumos
@@ -443,10 +470,10 @@ Verificado el 16 de septiembre de 2026 con Java 26, Maven 3.9 y PostgreSQL 16 en
 
 ```bash
 docker compose up -d db          # aplica db/schema.sql y siembra db/datos.sql
-cd java && mvn test              # la prueba única + las dos complementarias
+cd java && mvn test              # 25 pruebas de dominio + 3 de punta a punta
 ```
 
-Resultado obtenido: `Tests run: 3, Failures: 0, Errors: 0` — `BUILD SUCCESS`.
+Resultado obtenido: `Tests run: 28, Failures: 0, Errors: 0` — `BUILD SUCCESS`.
 
 Para levantar la rebanada y ejercitarla a mano:
 

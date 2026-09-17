@@ -42,10 +42,15 @@ Regla asociada: [R-2](reglas-de-negocio.md).
 
 ## 4. Cómo se resuelve hoy
 
-En `src/contratos.py`, `cargar_contratos` mantiene un conjunto
-`claves_vistas`. Antes de agregar una fila, calcula su clave natural; si
-ya está en el conjunto, la fila se ignora y no llega a la detección de
-alertas.
+Dentro de una carga, `CargadorDeContratos` mantiene un conjunto de claves
+vistas: antes de agregar una fila calcula su clave natural, y si ya está,
+la fila se ignora y no llega a la detección de alertas.
+
+Entre cargas y entre ejecuciones lo impide la base de datos: la
+restricción `uq_contrato_clave_natural` ([db/schema.sql](../db/schema.sql))
+hace imposible guardar dos contratos con el mismo número en la misma
+entidad, y `ContratoServicio` consulta por clave natural antes de
+insertar (HU-07).
 
 **Regla de conflicto (gana el primero).** Si dos filas comparten la clave
 pero traen datos distintos —por ejemplo un monto corregido— se conserva
@@ -82,11 +87,12 @@ prometer el caso persistente sin base de datos sería falso.
 
 ## 7. Pruebas que lo respaldan
 
-`tests/test_contratos.py`:
+`CargadorDeContratosTest`, grupo *Problema duro — Idempotencia*:
 
 | Prueba | Qué demuestra |
 |---|---|
-| `test_ignora_contratos_duplicados` | La clave repetida se carga una sola vez |
-| `test_duplicado_no_genera_alerta_falsa` | El duplicado no se convierte en reincidencia (§2, punto 3) |
-| `test_gana_el_primero_ante_datos_distintos` | La regla de conflicto de §4 |
-| `test_mismo_numero_en_entidades_distintas_no_se_deduplica` | El mismo `numero_contrato` en dos entidades **no** se deduplica |
+| *la misma clave natural repetida se carga una sola vez* | La clave repetida se carga una sola vez |
+| *un contrato duplicado no genera una alerta falsa* | El duplicado no se convierte en reincidencia (§2, punto 3) |
+| *ante datos distintos con la misma clave, gana el primero* | La regla de conflicto de §4 |
+| *el mismo número en entidades distintas son dos contratos* | El mismo `numero_contrato` en dos entidades **no** se deduplica |
+| `ContratoE2ETest` → `e2e_carga_persiste_y_es_idempotente` | La misma carga dos veces no duplica nada en la base (HU-07) |
