@@ -23,19 +23,22 @@ public class ContratoServicio {
     private final ContratistaRepo contratistaRepo;
     private final FuncionarioRepo funcionarioRepo;
     private final ContratoRepo contratoRepo;
+    private final AlertaRepo alertaRepo;
 
     public ContratoServicio(CargadorDeContratos cargador,
                             DetectorDeReincidencias detector,
                             EntidadRepo entidadRepo,
                             ContratistaRepo contratistaRepo,
                             FuncionarioRepo funcionarioRepo,
-                            ContratoRepo contratoRepo) {
+                            ContratoRepo contratoRepo,
+                            AlertaRepo alertaRepo) {
         this.cargador = cargador;
         this.detector = detector;
         this.entidadRepo = entidadRepo;
         this.contratistaRepo = contratistaRepo;
         this.funcionarioRepo = funcionarioRepo;
         this.contratoRepo = contratoRepo;
+        this.alertaRepo = alertaRepo;
     }
 
     /**
@@ -84,6 +87,9 @@ public class ContratoServicio {
 
         List<Alerta> alertas = detector.detectar(historico);
 
+        // 4. Persistir cada alerta con su evidencia (HU-02: sin evidencia no vale nada)
+        alertas.forEach(this::guardarAlerta);
+
         return new ResultadoServicio(nuevos, historico.size(), carga.duplicadosIgnorados(),
                 carga.filasDescartadas(), alertas);
     }
@@ -99,5 +105,28 @@ public class ContratoServicio {
 
     private static LocalDate aFecha(String fecha) {
         return fecha == null || fecha.isBlank() ? null : LocalDate.parse(fecha);
+    }
+
+    /**
+     * Guarda la alerta y los contratos que la originaron. Es idempotente:
+     * uq_alerta_par admite una sola alerta por par y tipo, así que volver a
+     * correr la detección sobre los mismos datos no duplica nada — la misma
+     * idea del problema duro, aplicada al resultado. Si el par ya tenía
+     * alerta y aparecieron contratos nuevos, se suman a su evidencia.
+     */
+    private void guardarAlerta(Alerta alerta) {
+        ContratistaJpa contratista = contratistaRepo.findByNombre(alerta.contratista()).orElseThrow();
+        FuncionarioJpa funcionario = funcionarioRepo.findByNombre(alerta.funcionario()).orElseThrow();
+
+        AlertaJpa fila = alertaRepo
+                .findByContratistaAndFuncionarioAndTipo(contratista, funcionario, AlertaJpa.REINCIDENCIA)
+                .orElseGet(() -> alertaRepo.save(new AlertaJpa(contratista, funcionario)));
+
+        for (Contrato c : alerta.evidencia()) {
+            entidadRepo.findByNombre(c.entidad())
+                    .flatMap(e -> contratoRepo.findByNumeroContratoAndEntidad(c.numeroContrato(), e))
+                    .ifPresent(fila.getEvidencia()::add);
+        }
+        alertaRepo.save(fila);
     }
 }

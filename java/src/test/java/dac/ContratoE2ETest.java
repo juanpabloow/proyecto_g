@@ -2,6 +2,7 @@ package dac;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dac.persistencia.AlertaRepo;
 import dac.persistencia.ContratoRepo;
 import dac.persistencia.EntidadRepo;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +61,9 @@ class ContratoE2ETest {
     private ContratoRepo contratoRepo;
 
     @Autowired
+    private AlertaRepo alertaRepo;
+
+    @Autowired
     private JdbcTemplate jdbc;
 
     /**
@@ -103,6 +107,10 @@ class ContratoE2ETest {
         assertEquals(5, contratoRepo.count(), "Filas en contrato tras la primera carga");
         assertEquals(2, entidadRepo.count(), "Entidades distintas tras la primera carga");
 
+        // La alerta y su evidencia quedan guardadas, no solo devueltas (HU-02)
+        assertEquals(1, alertaRepo.count(), "Alertas persistidas tras la primera carga");
+        assertEquals(3, filasDeEvidencia(), "Contratos de evidencia persistidos");
+
         // Riesgo residual del contrato: no basta con que el COUNT cuadre, hay que
         // verificar que una fila concreta viajó con sus valores y sus FK intactas.
         assertTrue(contratoRepo.findAllConFetch().stream().anyMatch(c ->
@@ -124,6 +132,8 @@ class ContratoE2ETest {
         assertEquals(5, cuerpoSegunda.get("totalEnBd").asInt(), "Total en BD tras la segunda carga");
         assertEquals(5, contratoRepo.count(), "Filas en contrato: no debe haber duplicados");
         assertEquals(2, entidadRepo.count(), "Tampoco deben duplicarse las entidades");
+        assertEquals(1, alertaRepo.count(), "uq_alerta_par: la alerta no se duplica");
+        assertEquals(3, filasDeEvidencia(), "La evidencia tampoco se duplica");
     }
 
     /**
@@ -196,6 +206,10 @@ class ContratoE2ETest {
                                 && c.getMonto() == null
                                 && c.getFecha() == null),
                 "El contrato 107 debe estar en BD: monto y fecha vacíos no descartan la fila (R-6)");
+    }
+
+    private int filasDeEvidencia() {
+        return jdbc.queryForObject("SELECT count(*) FROM alerta_contrato", Integer.class);
     }
 
     private ResponseEntity<String> enviarCsv(Object archivo) {
