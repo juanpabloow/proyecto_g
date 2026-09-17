@@ -48,44 +48,144 @@ implementación paralela en Python se consolidó aquí
 
 ## Cómo correrlo
 
-**La base de datos** (requiere Docker):
+Requiere **Docker**, **JDK 21+** y **Maven**.
+
+### 1. Levantar la base de datos
 
 ```bash
-docker compose up -d         # PostgreSQL 16 en localhost:5433 + visor web en localhost:8081
+docker compose up -d
 ```
+
+PostgreSQL 16 en `localhost:5433` y un visor web en `localhost:8081`.
+La primera vez crea las 6 tablas desde [db/schema.sql](db/schema.sql) y
+siembra datos de ejemplo desde [db/datos.sql](db/datos.sql).
 
 Para ver la base en el navegador: **http://localhost:8081** — servidor
-`db`, usuario `dac_user`, clave `dac_pass`, base `dac`. Sirve para mostrar
-las tablas, los datos y el diagrama de relaciones sin escribir SQL.
+`db`, usuario `dac_user`, clave `dac_pass`, base `dac`. Muestra las
+tablas, los datos y el diagrama de relaciones sin escribir SQL.
 
-**La aplicación** (requiere JDK 21+ y Maven):
+### 2. Correr las pruebas
 
 ```bash
-cd java && mvn test          # las 28 pruebas
-java/ejecutar.sh             # levanta el endpoint en localhost:8080
+cd java && mvn test
 ```
 
-Con el servidor arriba, la rebanada completa en un comando:
+Esperado: `Tests run: 28, Failures: 0, Errors: 0`. Las 25 de dominio no
+necesitan la base; las 3 de punta a punta sí.
+
+### 3. Levantar el servidor
+
+```bash
+java/ejecutar.sh
+```
+
+Queda ocupada la terminal. `Ctrl+C` para pararlo. Abre **otra terminal**
+para los comandos siguientes.
+
+### 4. Usarlo
 
 ```bash
 curl -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
 ```
 
-Responde `contratosNuevos`, `totalEnBd`, `filasDescartadas` y `alertas`.
-Llamarlo dos veces devuelve `contratosNuevos: 0` la segunda: eso es HU-07.
-
-Para ver HU-04 hace falta un archivo con filas incompletas — el de
-ejemplo no las tiene:
-
-```bash
-curl -F archivo=@data/contratos_incompletos_ejemplo.csv http://localhost:8080/api/contratos/cargar
-```
-
-En `filasDescartadas` viene cada fila que no se cargó y por qué.
+Responde `contratosNuevos`, `totalEnBd`, `duplicadosIgnorados`,
+`filasDescartadas` y `alertas` con su evidencia.
 
 > Los datos de `data/contratos_ejemplo.csv` son **ficticios**. Los
 > archivos con datos reales van en `data/privado/`, que no se sube al
 > repositorio.
+
+## Cómo demostrarlo
+
+> ⚠️ **Antes de empezar, reinicia a estado limpio.** El contenedor siembra
+> los mismos 5 contratos que trae el CSV de ejemplo, así que sobre una
+> base recién creada la primera carga responde `contratosNuevos: 0`. Es
+> correcto —es la idempotencia funcionando contra los datos sembrados—
+> pero arruina la demostración, porque no se ve el contraste.
+
+### Reiniciar a estado limpio
+
+```bash
+docker exec dac_db psql -U dac_user -d dac -c "TRUNCATE alerta_contrato, alerta, contrato, funcionario, contratista, entidad RESTART IDENTITY CASCADE"
+```
+
+Vacía las tablas sin borrar el esquema. Es lo mismo que hacen las pruebas
+antes de cada caso. Ejecútalo cada vez que quieras repetir la
+demostración desde cero.
+
+### Momento 1 — funciona de punta a punta
+
+```bash
+curl -s -F archivo=@data/contratos_ejemplo.csv \
+  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+```
+
+→ `contratosNuevos: 5`, `totalEnBd: 5`, **1 alerta**: `ACME SAS` +
+`Juan Pérez` con **3 contratos de evidencia**. Dos de esos contratos son
+de entidades distintas: la señal cruza instituciones (R-3).
+
+### Momento 2 — el problema duro
+
+Repite **exactamente el mismo comando**:
+
+```bash
+curl -s -F archivo=@data/contratos_ejemplo.csv \
+  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+```
+
+→ `contratosNuevos: 0`, `totalEnBd: 5`. El archivo se cargó dos veces y
+no se duplicó nada, ni los contratos ni la alerta. No depende de que el
+programa se acuerde: lo impide la restricción `uq_contrato_clave_natural`
+de la base de datos ([HU-07](docs/historias-usuario.md)).
+
+### Momento 3 — filas incompletas (HU-04)
+
+```bash
+curl -s -F archivo=@data/contratos_incompletos_ejemplo.csv \
+  http://localhost:8080/api/contratos/cargar | python3 -m json.tool
+```
+
+→ `200 OK` con 4 contratos cargados, **3 filas descartadas con su número
+de fila y el motivo**, 1 duplicado ignorado, y la reincidencia real
+intacta. Nadie recibe una alerta "sobre nadie", y el archivo no se
+invalida por tres filas malas ([Decisión 12](docs/decisiones-tecnicas.md)).
+
+### Momento 4 — la ruta de error
+
+```bash
+printf 'numero_contrato,entidad\n001,X\n' > /tmp/malo.csv
+curl -s -o /dev/null -w "HTTP %{http_code}\n" -F archivo=@/tmp/malo.csv \
+  http://localhost:8080/api/contratos/cargar
+```
+
+→ `HTTP 400`, y la base queda intacta: una carga rechazada no escribe
+nada ([R-1](docs/reglas-de-negocio.md)).
+
+### Mostrarlo en el navegador
+
+Con **http://localhost:8081** abierto en la tabla `contrato`, ejecuta el
+Momento 2 y refresca: **siguen 5 filas**. La idempotencia se ve, no solo
+se cuenta.
+
+Para mostrar el problema duro convertido en restricción: clic en
+`contrato` → *Mostrar estructura* → `uq_contrato_clave_natural`.
+
+## Si algo falla
+
+| Síntoma | Causa | Solución |
+|---|---|---|
+| `Port 8080 was already in use` | Quedó un servidor anterior vivo | `lsof -ti:8080 \| xargs kill` |
+| El servidor no arranca | La base está apagada | `docker compose up -d` |
+| `relation ... does not exist` | El volumen quedó a medias | `docker compose down -v && docker compose up -d` |
+| `contratosNuevos: 0` en la primera carga | El contenedor sembró `db/datos.sql` | Reinicia a estado limpio (arriba) |
+| Números distintos a los esperados | `mvn test` dejó otro estado en la base | Reinicia a estado limpio (arriba) |
+| `mvn: command not found` | Terminal abierta antes de instalar Maven | Abre una terminal nueva |
+
+Para borrar **todo**, incluidos los datos, y volver al punto de partida:
+
+```bash
+docker compose down -v && docker compose up -d
+```
 
 ## Documentación
 
