@@ -30,8 +30,8 @@ Cada regla dice **[Implementada]**, **[Parcial]** o **[Pendiente]**.
 con un error que nombra las columnas faltantes. Columnas *adicionales*
 se aceptan y se conservan.
 
-- Código: `src/contratos.py` → `COLUMNAS_REQUERIDAS`
-- Prueba: `tests/test_contratos.py::test_falla_si_faltan_columnas`
+- Código: `java/src/main/java/dac/dominio/CargadorDeContratos.java` → `COLUMNAS_REQUERIDAS`
+- Prueba: `CargadorDeContratosTest` → *falla nombrando la columna que falta*
 
 ## R-2 — La identidad de un contrato es `numero_contrato` + `entidad` **[Implementada]**
 
@@ -39,7 +39,8 @@ Ni `numero_contrato` solo (dos entidades pueden usar el mismo
 consecutivo "001") ni la fila completa (un cambio de monto no lo
 convierte en otro contrato).
 
-- Código: `src/contratos.py` → `clave = (fila["numero_contrato"], fila["entidad"])`
+- Código: `java/src/main/java/dac/dominio/Contrato.java` → `claveNatural()`
+- En la base: `uq_contrato_clave_natural` ([db/schema.sql](../db/schema.sql))
 - Detalle en [problema-duro.md](problema-duro.md)
 
 ## R-3 — Reincidencia: el mismo par en más de un contrato **[Implementada]**
@@ -65,8 +66,8 @@ Precisiones que antes no estaban escritas:
 > veces en un periodo"?* Cambiar esto cambia la regla, no el código
 > alrededor.
 
-- Código: `src/alertas.py` → `detectar_reincidencias`
-- Prueba: `tests/test_alertas.py`
+- Código: `java/src/main/java/dac/dominio/DetectorDeReincidencias.java`
+- Prueba: `DetectorDeReincidenciasTest` (8 casos, uno por criterio)
 
 ## R-4 — Una alerta describe coincidencias, no culpabilidad **[Implementada por diseño]**
 
@@ -88,7 +89,7 @@ personas escritas en minúscula **no** genera alerta.
   un analista; inventarlas sería peor que dejar la limitación visible.
 - **Trabajo futuro:** [HU-05](historias-usuario.md).
 
-## R-6 — Filas incompletas: se descartan y se reportan **[Implementada en Java — pendiente en Python]**
+## R-6 — Filas incompletas: se descartan y se reportan **[Implementada]**
 
 Una fila sin `contratista`, sin `funcionario`, sin `numero_contrato` o
 sin `entidad` no se convierte en contrato: se descarta, y la carga
@@ -107,15 +108,9 @@ número de fila. El resto del archivo se analiza igual.
   por el equipo de forma **provisional** y pendiente de confirmación con
   S-1.
 
-> ⚠️ **Solo en el módulo Java.** En `src/contratos.py` sigue el
-> comportamiento anterior, verificado: dos contratos con `contratista` y
-> `funcionario` vacíos producen una alerta del par `("", "")` — una
-> alerta sobre nadie. La duplicación es deliberada y está registrada en
-> la [Decisión 13](decisiones-tecnicas.md).
-
 - Código: `java/src/main/java/dac/dominio/CargadorDeContratos.java` → `CAMPOS_OBLIGATORIOS`
-- Prueba: `java/src/test/java/dac/ContratoE2ETest.java` →
-  `carga_filas_incompletas_sin_invalidar_el_archivo`
+- Pruebas: `FilasIncompletasTest` (7 casos) y, de punta a punta,
+  `ContratoE2ETest` → `carga_filas_incompletas_sin_invalidar_el_archivo`
 - Historia: [HU-04](historias-usuario.md)
 - **En la frontera de persistencia:** que `monto` y `fecha` vacíos no
   descarten la fila obliga a que las columnas admitan `NULL`. El modelo
@@ -124,8 +119,9 @@ número de fila. El resto del archivo se analiza igual.
 
 ## R-7 — Los datos reales no entran al repositorio **[Implementada]**
 
-Los dos CSV de `data/` son **ficticios** y sí se versionan: sin ellos, ni
-`python3 main.py` ni la demostración de HU-04 funcionan en un clon nuevo.
+Los dos CSV de `data/` son **ficticios** y sí se versionan: sin ellos, las
+pruebas de punta a punta y la demostración de HU-04 no funcionan en un
+clon nuevo.
 
 | Archivo | Para qué |
 |---|---|

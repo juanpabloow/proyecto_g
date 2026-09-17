@@ -13,5 +13,19 @@ services:
       - ./db/datos.sql:/docker-entrypoint-initdb.d/02_datos.sql
       - dac_data:/var/lib/postgresql/data
 
+  # Visor web de la base de datos: http://localhost:8081
+  # Servidor db · Usuario dac_user · Clave dac_pass · Base dac
+  adminer:
+    image: adminer:4
+    container_name: dac_adminer
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DESIGN: dracula
+
 volumes:
   dac_data:

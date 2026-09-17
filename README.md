@@ -37,34 +37,31 @@ está en [esqueleto/rebanada.md](esqueleto/rebanada.md).
 - **[HU-04](docs/historias-usuario.md):** una fila sin contratista o sin
   funcionario no produce una alerta sobre nadie — se descarta y se reporta
   ([Decisión 12](docs/decisiones-tecnicas.md)).
-- 12 pruebas en Python y la prueba única de la rebanada en Java (por HTTP
-  real, contra la base de datos real), todas pasando.
+- Las alertas y su evidencia quedan guardadas en la base, no solo
+  devueltas en la respuesta.
+- **28 pruebas automatizadas**, todas pasando: 25 de dominio y 3 de punta
+  a punta por HTTP real contra la base de datos real.
 
-Hay **dos implementaciones** y la duplicación es deliberada: Python
-(`src/`) y el backend de la rebanada en Java + Spring Boot (`java/`). Ver
-[Decisión 13](docs/decisiones-tecnicas.md) y
-[Decisión 14](docs/decisiones-tecnicas.md).
+Todo el sistema está en **un solo lenguaje**: Java 21 con Spring Boot. La
+implementación paralela en Python se consolidó aquí
+([Decisión 18](docs/decisiones-tecnicas.md)).
 
 ## Cómo correrlo
 
 **La base de datos** (requiere Docker):
 
 ```bash
-docker compose up -d db      # PostgreSQL 16 en localhost:5433, esquema y datos aplicados
+docker compose up -d         # PostgreSQL 16 en localhost:5433 + visor web en localhost:8081
 ```
 
-**Python** (`src/`):
+Para ver la base en el navegador: **http://localhost:8081** — servidor
+`db`, usuario `dac_user`, clave `dac_pass`, base `dac`. Sirve para mostrar
+las tablas, los datos y el diagrama de relaciones sin escribir SQL.
+
+**La aplicación** (requiere JDK 21+ y Maven):
 
 ```bash
-pip install -r requirements.txt
-python3 main.py              # flujo completo contra la base de datos
-python3 -m pytest -v         # las 12 pruebas (en memoria, no necesitan la BD)
-```
-
-**Java** (`java/`, requiere JDK 21+ y Maven):
-
-```bash
-cd java && mvn test          # la prueba única de la rebanada, por HTTP real
+cd java && mvn test          # las 28 pruebas
 java/ejecutar.sh             # levanta el endpoint en localhost:8080
 ```
 

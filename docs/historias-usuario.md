@@ -54,7 +54,8 @@ Los roles citados (S-1, S-2, S-3…) son los de
 
 **Reglas de negocio aplicadas:** [R-1](reglas-de-negocio.md),
 [R-2](reglas-de-negocio.md), [R-8](reglas-de-negocio.md).
-**Código:** `src/contratos.py` · **Pruebas:** `tests/test_contratos.py`
+**Código:** `java/src/main/java/dac/dominio/CargadorDeContratos.java` ·
+**Pruebas:** `CargadorDeContratosTest` (5 casos de carga)
 
 ---
 
@@ -118,7 +119,7 @@ continuación es verificarla una por una
 7. **Dado** un análisis terminado, **cuando** veo la salida, **entonces**
    cada alerta muestra, por contrato, su número, entidad, fecha y monto
    —lo mínimo para poder buscar el expediente físico— (S-2, S-3).
-   → verificado en la salida de `main.py`
+   → `DetectorDeReincidenciasTest` → *la evidencia trae número, entidad, fecha y monto*
 
 ### Fuera del alcance de esta historia
 
@@ -131,11 +132,13 @@ continuación es verificarla una por una
 - [x] Los 6 criterios automatizables tienen prueba y pasan.
 - [x] La regla quedó escrita en [R-3](reglas-de-negocio.md), con su
       supuesto sin validar señalado.
-- [x] Funciona de punta a punta: `python3 main.py`.
+- [x] Funciona de punta a punta: `POST /api/contratos/cargar` devuelve la
+      alerta con su evidencia, y queda guardada en la base.
 - [x] Cualquier integrante del equipo puede explicar cómo se genera una
       alerta.
 
-**Código:** `src/alertas.py` · **Pruebas:** `tests/test_alertas.py`
+**Código:** `java/src/main/java/dac/dominio/DetectorDeReincidencias.java` ·
+**Pruebas:** `DetectorDeReincidenciasTest` (8 casos, uno por criterio)
 
 ---
 
@@ -199,14 +202,9 @@ y necesita validación de S-1 ([R-5](reglas-de-negocio.md)).
       que traiga filas incompletas.
 - [ ] **Confirmar la Decisión 12 con un analista real (S-1).**
 
-> ⚠️ **Hecha solo en el módulo Java** (`java/`). El código Python de
-> `src/` sigue con el comportamiento de [R-6](reglas-de-negocio.md):
-> duplicación deliberada y registrada en la
-> [Decisión 13](decisiones-tecnicas.md).
-
 **Código:** `java/src/main/java/dac/dominio/CargadorDeContratos.java` ·
-**Prueba:** `java/src/test/java/dac/ContratoE2ETest.java` →
-`carga_filas_incompletas_sin_invalidar_el_archivo`
+**Pruebas:** `FilasIncompletasTest` (7 casos) y, de punta a punta,
+`ContratoE2ETest` → `carga_filas_incompletas_sin_invalidar_el_archivo`
 
 ---
 
@@ -268,14 +266,13 @@ idempotencia real, y requiere almacenamiento persistente
 
 **Hecha.** La clave natural pasó a ser una restricción de la base de datos
 (`uq_contrato_clave_natural` en [db/schema.sql](../db/schema.sql)), así que
-recargar un contrato ya cargado no lo duplica ni en Java ni en Python:
+recargar un contrato ya cargado no lo duplica.
 
-- Java: `ContratoServicio.cargarYDetectar` consulta por clave natural antes
-  de insertar. Lo verifica la prueba `e2e_carga_persiste_y_es_idempotente`
-  ([esqueleto/rebanada.md §4](../esqueleto/rebanada.md)), que hace la misma
-  carga dos veces y exige `contratosNuevos == 0` en la segunda.
-- Python: `repositorio.guardar_contratos` inserta con
-  `ON CONFLICT ON CONSTRAINT uq_contrato_clave_natural DO NOTHING`.
+`ContratoServicio.cargarYDetectar` consulta por clave natural antes de
+insertar. Lo verifica `e2e_carga_persiste_y_es_idempotente`
+([esqueleto/rebanada.md §4](../esqueleto/rebanada.md)), que hace la misma
+carga dos veces y exige `contratosNuevos == 0` en la segunda. Lo mismo
+vale para las alertas: `uq_alerta_par` impide que se dupliquen.
 
 ---
 

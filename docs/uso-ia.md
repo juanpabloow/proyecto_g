@@ -9,11 +9,11 @@ de código.
   proceso, revisada y ajustada por el equipo.
 - Explicación de conceptos de Git/GitHub para integrantes sin experiencia
   previa (ramas, Pull Requests, fusión).
-- Generación del esqueleto de código inicial (`src/contratos.py`,
-  `src/alertas.py`) y sus pruebas unitarias, explicado línea por línea al
-  equipo antes de aceptarlo.
+- Generación del esqueleto de código inicial —la carga del CSV y la
+  detección de reincidencias— y sus pruebas unitarias, explicado línea por
+  línea al equipo antes de aceptarlo.
 - Revisión de consistencia entre documentos y código: sacar a la luz
-  comportamientos que estaban implícitos en `src/` y no escritos en
+  comportamientos que estaban implícitos en el código y no escritos en
   ninguna parte (ver [reglas-de-negocio.md](reglas-de-negocio.md)).
 
 ## Qué no se hizo con IA

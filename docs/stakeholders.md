@@ -52,7 +52,7 @@ BAJA        │ S-9 Ciudadanía        │ S-5 Entidad contratante       │
 |---|---|
 | S-1 | Idempotencia como problema duro ([problema-duro.md](problema-duro.md)) |
 | S-1, S-3 | Cada alerta lista los contratos que la originaron ([HU-02](historias-usuario.md)) |
-| S-2 | `main.py` imprime contratos cargados y alertas encontradas |
+| S-2 | La respuesta de `POST /api/contratos/cargar` trae contratos cargados y alertas encontradas |
 | S-5, S-6 | El sistema no puntúa personas; solo describe coincidencias ([R-4](reglas-de-negocio.md)) |
 | S-7, S-8 | Los datos reales van en `data/privado/`, fuera de Git ([R-7](reglas-de-negocio.md)) |
 | S-11, S-12 | Alcance de una sola señal, con pruebas y decisiones registradas |
