@@ -57,9 +57,21 @@ igual.
 
 ### 1. Levantar la base de datos
 
+La primera vez, crea tu archivo de secretos y cambia la clave:
+
+```bash
+cp .env.example .env
+```
+
+`.env` no se sube al repositorio (está en `.gitignore`). Lo leen Docker y
+la aplicación ([Decisión 24](docs/decisiones-tecnicas.md)).
+
 ```bash
 docker compose up -d
 ```
+
+> Si ya tenías la base creada con la clave anterior (`dac_pass`), pon esa
+> misma clave en `.env`, o borra el volumen con `docker compose down -v`.
 
 PostgreSQL 16 en `localhost:5433` y un visor web en `localhost:8081`.
 La primera vez crea las 6 tablas desde [db/schema.sql](db/schema.sql) y
@@ -200,8 +212,8 @@ Y para señalar el problema duro convertido en restricción: clic en
 
 ### En el navegador
 
-**http://localhost:8081** — servidor `db`, usuario `dac_user`, clave
-`dac_pass`, base `dac`. Clic en `contrato` → *Select data*. Las llaves
+**http://localhost:8081** — servidor `db`, base `dac`, y el usuario y la
+clave que pusiste en tu archivo `.env`. Clic en `contrato` → *Select data*. Las llaves
 foráneas son enlaces navegables: clic en un `id_contratista` y saltas al
 contratista.
 

@@ -6,3 +6,6 @@ java/target/
 # las pruebas de punta a punta no funcionan en un clon nuevo.
 data/privado/*
 !data/privado/README.md
+
+# Secretos locales (Módulo 7): la plantilla .env.example sí se versiona
+.env
