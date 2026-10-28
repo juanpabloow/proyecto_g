@@ -7,6 +7,10 @@ import java.util.*;
 /**
  * La señal del MVP: el mismo contratista con el mismo funcionario
  * en más de un contrato (R-3).
+ *
+ * <p>Los nombres se comparan normalizados (HU-05): "ACME SAS" y "acme s.a.s."
+ * son el mismo contratista. La alerta muestra el nombre tal como aparece en
+ * el primer contrato, y cada contrato de evidencia conserva el suyo.
  */
 @Component
 public final class DetectorDeReincidencias {

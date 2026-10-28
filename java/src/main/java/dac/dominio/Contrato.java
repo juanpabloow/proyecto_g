@@ -27,8 +27,18 @@ public record Contrato(
         return numeroContrato + SEPARADOR + entidad;
     }
 
-    /** El par (contratista, funcionario): la unidad sobre la que se alerta (R-3). */
+    /**
+     * El par (contratista, funcionario): la unidad sobre la que se alerta (R-3).
+     * Se compara con los nombres normalizados (HU-05, R-5): "ACME SAS" y
+     * "acme s.a.s." son el mismo contratista para la señal.
+     */
     public String par() {
-        return contratista + SEPARADOR + funcionario;
+        return NormalizadorDeNombres.normalizar(contratista) + SEPARADOR
+                + NormalizadorDeNombres.normalizar(funcionario);
+    }
+
+    /** Contratista normalizado + entidad: la unidad del fraccionamiento (HU-03). */
+    public String contratistaEnEntidad() {
+        return NormalizadorDeNombres.normalizar(contratista) + SEPARADOR + entidad;
     }
 }

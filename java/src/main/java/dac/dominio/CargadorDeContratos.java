@@ -49,7 +49,9 @@ public final class CargadorDeContratos {
 
         List<Contrato> contratos = new ArrayList<>();
         List<FilaDescartada> descartadas = new ArrayList<>();
-        Set<String> clavesVistas = new HashSet<>();
+        Map<String, Integer> filaPorClave = new LinkedHashMap<>();
+        Map<String, Contrato> primeraVersion = new HashMap<>();
+        List<ConflictoDeDuplicado> conflictos = new ArrayList<>();
         int duplicados = 0;
 
         for (int i = 1; i < filas.size(); i++) {
@@ -65,13 +67,21 @@ public final class CargadorDeContratos {
             }
 
             Contrato contrato = aContrato(fila, encabezado);
-            if (!clavesVistas.add(contrato.claveNatural())) {
+            Contrato anterior = primeraVersion.putIfAbsent(contrato.claveNatural(), contrato);
+            if (anterior != null) {
                 duplicados++;
+                List<String> distintos = camposDistintos(anterior, contrato);
+                if (!distintos.isEmpty()) {
+                    conflictos.add(new ConflictoDeDuplicado(i + 1, contrato.numeroContrato(),
+                            contrato.entidad(), "fila " + filaPorClave.get(contrato.claveNatural()),
+                            distintos));
+                }
                 continue;
             }
+            filaPorClave.put(contrato.claveNatural(), i + 1);
             contratos.add(contrato);
         }
-        return new ResultadoCarga(contratos, descartadas, duplicados);
+        return new ResultadoCarga(contratos, descartadas, duplicados, conflictos, filaPorClave);
     }
 
     private static void validarColumnas(List<String> encabezado) {
@@ -102,6 +112,25 @@ public final class CargadorDeContratos {
     private static String motivo(List<String> faltantes) {
         String lista = String.join(", ", faltantes);
         return faltantes.size() == 1 ? "falta el campo " + lista : "faltan los campos " + lista;
+    }
+
+    /**
+     * HU-06: qué campos de un duplicado difieren de la primera versión. Se
+     * comparan tal como vienen (sin normalizar): para el analista, "Juan
+     * Pérez" y "juan pérez" son la misma persona en la señal, pero una
+     * corrección de escritura también es un dato que quiere ver.
+     */
+    public static List<String> camposDistintos(Contrato primera, Contrato otra) {
+        List<String> distintos = new ArrayList<>();
+        if (!igual(primera.contratista(), otra.contratista())) distintos.add("contratista");
+        if (!igual(primera.funcionario(), otra.funcionario())) distintos.add("funcionario");
+        if (!igual(primera.monto(), otra.monto())) distintos.add("monto");
+        if (!igual(primera.fecha(), otra.fecha())) distintos.add("fecha");
+        return distintos;
+    }
+
+    private static boolean igual(String a, String b) {
+        return (a == null ? "" : a.strip()).equals(b == null ? "" : b.strip());
     }
 
     private static Contrato aContrato(Map<String, String> fila, List<String> encabezado) {
