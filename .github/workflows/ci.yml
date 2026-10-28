@@ -12,7 +12,8 @@ on:
 
 jobs:
   pruebas:
-    runs-on: ubuntu-latest
+    # Versión fija del sistema: la medición de los RNF siempre en la misma máquina
+    runs-on: ubuntu-24.04
 
     # Credenciales de una base desechable que solo vive mientras corre este
     # trabajo y no guarda datos reales. Las de cada computador van en .env,
@@ -38,9 +39,9 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -70,7 +71,7 @@ jobs:
 
       - name: Guardar el reporte de pruebas y la medición
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reporte-pruebas
           path: |
