@@ -22,6 +22,14 @@ public final class CargadorDeContratos {
             "numero_contrato", "entidad", "contratista", "funcionario");
 
     /**
+     * Longitud máxima de cada campo, la misma de las columnas en db/schema.sql.
+     * Validar en la frontera (Módulo 7, S-02): un valor más largo descarta la
+     * fila con su motivo, en vez de llegar a la base y romper la carga con un 500.
+     */
+    public static final Map<String, Integer> LONGITUD_MAXIMA = Map.of(
+            "numero_contrato", 50, "entidad", 200, "contratista", 200, "funcionario", 200);
+
+    /**
      * Carga desde un InputStream (multipart upload vía REST).
      */
     public ResultadoCarga cargarDesde(InputStream stream) {
@@ -63,6 +71,12 @@ public final class CargadorDeContratos {
 
             if (!faltantes.isEmpty()) {
                 descartadas.add(new FilaDescartada(i + 1, motivo(faltantes)));
+                continue;
+            }
+            String demasiadoLargo = campoDemasiadoLargo(fila);
+            if (demasiadoLargo != null) {
+                descartadas.add(new FilaDescartada(i + 1, "el campo " + demasiadoLargo
+                        + " supera " + LONGITUD_MAXIMA.get(demasiadoLargo) + " caracteres"));
                 continue;
             }
 
@@ -107,6 +121,13 @@ public final class CargadorDeContratos {
     private static List<String> camposVacios(Map<String, String> fila) {
         return CAMPOS_OBLIGATORIOS.stream()
                 .filter(c -> fila.getOrDefault(c, "").isBlank()).toList();
+    }
+
+    private static String campoDemasiadoLargo(Map<String, String> fila) {
+        for (String campo : CAMPOS_OBLIGATORIOS) {
+            if (fila.getOrDefault(campo, "").length() > LONGITUD_MAXIMA.get(campo)) return campo;
+        }
+        return null;
     }
 
     private static String motivo(List<String> faltantes) {
