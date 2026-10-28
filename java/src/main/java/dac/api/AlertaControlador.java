@@ -2,6 +2,7 @@ package dac.api;
 
 import dac.aplicacion.ContratoServicio;
 import dac.aplicacion.ResumenDeAlertas;
+import dac.seguridad.Auditoria;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +35,9 @@ public class AlertaControlador {
 
     @GetMapping("/exportar")
     public ResponseEntity<byte[]> exportar() {
-        byte[] csv = servicio.exportarAlertas().getBytes(StandardCharsets.UTF_8);
+        String texto = servicio.exportarAlertas();
+        Auditoria.exportacion(Math.max(0, texto.split("\r\n").length - 1));
+        byte[] csv = texto.getBytes(StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + NOMBRE_ARCHIVO + "\"")
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
