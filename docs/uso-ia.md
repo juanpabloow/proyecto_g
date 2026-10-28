@@ -51,6 +51,37 @@ Request.
 - Verificamos que la suite completa (63 pruebas) pase en GitHub Actions
   contra PostgreSQL real. Nada se fusiona a `main` con el CI en rojo.
 
+## Declaración del Módulo 7: seguridad y requisitos no funcionales
+
+Usamos el mismo asistente (Claude), desde nuestros computadores. El
+trabajo se subió desde la cuenta de GitHub de Gerson Rojo en la rama
+`seg/modulo-7` y el Pull Request #6.
+
+**Instrucciones que le dimos:**
+
+1. Le pasamos lo que pide el Módulo 7 (la ruta de las semanas 13 y 14 y
+   la evidencia que se entrega) y le preguntamos qué se había hecho y qué
+   faltaba en el proyecto.
+2. Le pedimos completar lo que faltaba: checklist de seguridad con
+   hallazgos, pruebas de ataques simulados, secretos fuera del
+   repositorio, los dos RNF medidos con método y la documentación,
+   respetando las reglas del curso (rama, Pull Request, pruebas en CI).
+3. Le pedimos que todo quedara acorde al proyecto y que la declaración de
+   IA dijera las instrucciones que le dimos y qué se aceptó o no.
+
+**Registro de sugerencias de la IA:**
+
+| Sugerencia | Qué decidimos |
+|---|---|
+| Declarar los dos RNF: rendimiento (5.000 contratos en ≤ 5 s) e integridad ante recargas (10 recargas, 0 duplicados) | **Aceptada.** No encontramos en el repositorio los RNF candidatos de la semana 3, así que quedan declarados en este módulo |
+| Medir los RNF en GitHub Actions con datos ficticios de semilla fija | **Aceptada** (Decisión 26) |
+| Leer la clave de la base de un archivo `.env` | **Aceptada** (Decisión 24) |
+| Cabeceras de seguridad, validación en la frontera, errores sin detalles y registro de auditoría sin nombres | **Aceptadas** |
+| Cambiar la carga para no consultar la base fila por fila | **Aceptada** (Decisión 25) |
+| Agregar inicio de sesión y roles | **No se aplica en este alcance**: queda como deuda DT-03, condición para usar datos reales |
+| Agregar la revisión automática de dependencias (OWASP Dependency-Check) al CI | **No se aplica**: alarga mucho cada ejecución del CI; queda como deuda DT-15 |
+| Desplegar el release candidate en un servicio gratuito (nivel avanzado, opcional) | **No se aplica**: sin inicio de sesión ni HTTPS no es seguro publicarlo |
+
 ## Qué no se hizo con IA
 - Las decisiones de alcance (qué señal cubrir primero, qué queda fuera
   del MVP) fueron discutidas y decididas por el equipo.

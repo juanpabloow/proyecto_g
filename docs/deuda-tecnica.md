@@ -16,16 +16,18 @@ mantenimiento. **Baja** = incomodidad o costo futuro.
 | DT-01 | Las alertas de fraccionamiento no se guardan en la base | Diseño | Alta | Medio |
 | DT-02 | Reglas de HU-03 y HU-05 sin validar con un analista real | Negocio | Alta | Bajo (reunión) + configuración |
 | DT-03 | La API y la pantalla no tienen inicio de sesión | Seguridad | Alta | Medio |
-| DT-04 | Credenciales de la base escritas en el repositorio | Seguridad | Alta | Bajo |
+| ~~DT-04~~ | ~~Credenciales de la base escritas en el repositorio~~ — **pagada en el Módulo 7** | Seguridad | — | — |
 | DT-05 | Alertas guardadas que ya no se recalculan (alertas "huérfanas") | Diseño | Media | Medio |
 | DT-06 | Cada carga relee **todo** el histórico en memoria | Rendimiento | Media | Alto |
 | DT-07 | `monto` y `fecha` siguen siendo texto en el dominio | Diseño | Media | Medio |
 | DT-08 | Los conflictos (HU-06) se informan pero no se guardan | Diseño | Media | Bajo |
-| DT-09 | Dos cargas simultáneas del mismo archivo pueden chocar | Concurrencia | Media | Medio |
+| DT-09 | Dos cargas simultáneas: ya responden 409 claro, falta la prueba automática | Concurrencia | Baja | Bajo |
 | DT-10 | El esquema se crea borrando tablas; no hay migraciones | Operación | Media | Medio |
-| DT-11 | Consultas repetidas por fila al guardar (N+1) | Rendimiento | Baja | Bajo |
+| ~~DT-11~~ | ~~Consultas repetidas por fila al guardar (N+1)~~ — **pagada en el Módulo 7 (RNF-1)** | Rendimiento | — | — |
 | DT-12 | La interfaz web no tiene pruebas automáticas propias | Pruebas | Baja | Medio |
 | DT-13 | Un solo tope de cuantía para todas las entidades | Negocio | Baja | Medio |
+| DT-14 | Sin HTTPS | Seguridad | Alta al desplegar | Bajo |
+| DT-15 | Sin revisión automática de dependencias vulnerables | Seguridad | Media | Bajo |
 
 ## Detalle
 
@@ -79,7 +81,11 @@ filtrada puede dañar la reputación de alguien inocente (R-4, S-6).
 **Cómo se paga.** Spring Security con usuarios por rol (analista,
 coordinador) y HTTPS.
 
-### DT-04 — Credenciales en el repositorio · Alta (deuda de seguridad)
+### DT-04 — Credenciales en el repositorio · **Pagada (Módulo 7)**
+
+La clave se lee de `.env` (ignorado por Git) y el CI falla si alguien
+vuelve a escribir una clave en el código. Ver S-06 en
+[seguridad-y-rnf.md](seguridad-y-rnf.md). Lo que sigue es cómo estaba antes.
 
 **Qué es.** `dac_user` / `dac_pass` están en `application.properties`,
 `docker-compose.yml` y el flujo de CI.
@@ -152,6 +158,10 @@ error 500 en vez de un mensaje claro.
 `INSERT … ON CONFLICT DO NOTHING`. Ya estaba registrado como pendiente en
 [rebanada §4](../esqueleto/rebanada.md).
 
+**Pagada en parte (Módulo 7):** la violación ahora responde **409** con un
+mensaje que explica que no se guardó nada y que se puede reintentar. Falta
+una prueba automática con dos cargas en paralelo.
+
 ### DT-10 — Sin migraciones · Media
 
 **Qué es.** `db/schema.sql` empieza con `DROP TABLE`: sirve para crear la
@@ -163,7 +173,11 @@ reales obligaría a borrarlos.
 **Cómo se paga.** Flyway con scripts numerados (`V1__esquema.sql`,
 `V2__alerta_fraccionamiento.sql`).
 
-### DT-11 — Consultas N+1 al guardar · Baja
+### DT-11 — Consultas N+1 al guardar · **Pagada (Módulo 7)**
+
+Para cumplir el RNF-1, la carga lee lo existente una sola vez y trabaja
+con índices en memoria ([Decisión 25](decisiones-tecnicas.md)). Lo que
+sigue es cómo estaba antes.
 
 **Qué es.** Por cada fila se busca la entidad, el contratista, el
 funcionario y el contrato por separado.
@@ -187,6 +201,22 @@ depende del presupuesto de cada entidad; DAC usa uno solo.
 
 **Cómo se paga.** Una tabla de topes por entidad y año, cargada por el analista.
 
+### DT-14 — Sin HTTPS · Alta al desplegar
+
+**Qué es.** El servidor responde por `http://localhost`.
+**Por qué se aceptó.** No hay despliegue: el tráfico no sale del computador.
+**Costo.** En una red, los datos viajarían sin cifrar.
+**Cómo se paga.** Certificado y HTTPS en el servidor o en un proxy delante.
+
+### DT-15 — Sin revisión de dependencias · Media
+
+**Qué es.** Nadie revisa automáticamente si una librería tiene una
+vulnerabilidad publicada.
+**Por qué se aceptó.** La herramienta habitual (OWASP Dependency-Check)
+descarga una base de vulnerabilidades muy grande y alarga mucho el CI.
+**Cómo se paga.** Activar Dependabot en el repositorio o agregar la
+revisión en una ejecución semanal aparte del CI.
+
 ## Lo que sí se pagó en esta entrega
 
 | Deuda anterior | Cómo se pagó |
@@ -196,3 +226,6 @@ depende del presupuesto de cada entidad; DAC usa uno solo.
 | No había CI: las pruebas se corrían a mano (pendiente 1) | GitHub Actions, [Decisión 22](decisiones-tecnicas.md) |
 | La demostración solo se podía hacer con `curl` | Interfaz web, [Decisión 21](decisiones-tecnicas.md) |
 | El error 400 no decía qué estaba mal | Respuesta con mensaje, [Decisión 23](decisiones-tecnicas.md) |
+| DT-04 clave en el repositorio (Módulo 7) | `.env` + revisión en el CI, [Decisión 24](decisiones-tecnicas.md) |
+| DT-11 consultas por fila (Módulo 7) | Lectura única e índices en memoria, [Decisión 25](decisiones-tecnicas.md) |
+| Errores 500 con datos largos o montos negativos (Módulo 7) | Validación en la frontera, [seguridad-y-rnf.md](seguridad-y-rnf.md) S-02 |

@@ -64,4 +64,13 @@ Decisión 12 es una **excepción explícita**, y conviene que se note:
 | 22 | **Integración continua** con GitHub Actions: cada push y cada Pull Request levanta PostgreSQL 16 con `db/schema.sql` y corre `mvn test` | Seguir corriendo las pruebas a mano (pendiente 1 del mapa) | La regla del curso es "rama principal siempre verde". Sin CI dependía de que alguien se acordara de correr las pruebas antes de fusionar |
 | 23 | El error de carga responde **400 con `{"error": "..."}`** en vez de un 400 sin cuerpo | Mantener el 400 vacío | La pantalla necesita decirle al analista *qué* columna falta; antes solo podía decir "error" |
 
+## Decisiones del Módulo 7 (seguridad y RNF)
+
+| # | Decisión | Alternativa descartada | Por qué |
+|---|---|---|---|
+| 24 | La clave de la base se lee de **`.env`** (ignorado por Git, plantilla `.env.example`) o de variables de entorno; sin ella la aplicación no arranca. En el CI se usa una base desechable | Dejar la clave en `application.properties`; o usar *secrets* de GitHub | La clave estaba publicada en el repositorio (DT-04). Los *secrets* exigen permisos de administrador del repositorio; la base del CI se destruye al terminar y no guarda datos reales |
+| 25 | La carga **lee lo existente una sola vez** y trabaja con índices en memoria | Seguir consultando por cada fila; o escribir la detección en SQL | Con 5.000 filas, las consultas por fila hacían que Hibernate revisara todo lo cargado en cada consulta. La lectura única cumple el RNF-1 sin cambiar el modelo; la detección en SQL queda para cuando el volumen lo exija (DT-06) |
+| 26 | Los **RNF se miden en el CI** con datos ficticios de semilla fija | Medir una vez a mano en un computador del equipo | Una cifra sin método no sirve: en el CI el método, los datos y la máquina son siempre los mismos y la medición se repite en cada cambio |
+| 27 | El registro de auditoría guarda **cantidades, no nombres** | Registrar el contenido de cada carga | El log sería otra copia de datos sensibles (S-8) |
+
 Nuevas decisiones se van agregando aquí a medida que el equipo avanza.

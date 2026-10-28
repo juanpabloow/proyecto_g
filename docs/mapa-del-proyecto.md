@@ -26,6 +26,7 @@ por la tabla de la sección 1.
 | Por qué se tomó cada decisión | [docs/decisiones-tecnicas.md](decisiones-tecnicas.md) |
 | Quién hizo qué en el equipo | [docs/Equipo/](Equipo/) |
 | Cómo se usó IA y cuál es la postura del equipo | [docs/uso-ia.md](uso-ia.md) |
+| La seguridad del sistema y los requisitos no funcionales | [docs/seguridad-y-rnf.md](seguridad-y-rnf.md) |
 | Cómo ejecutar el proyecto y las pruebas | [README.md](../README.md) y §5 de este documento |
 | Lo que falta y en qué orden | §6 de este documento y [docs/deuda-tecnica.md](deuda-tecnica.md) |
 | La interfaz web | `java/src/main/resources/static/` — se abre en http://localhost:8080 |
@@ -35,7 +36,8 @@ por la tabla de la sección 1.
 ```
 proyecto_g/
 ├── README.md                    Punto de entrada: qué es, cómo correrlo, índice
-├── .gitignore                   Datos reales fuera del repo (R-7)
+├── .gitignore                   Datos reales y .env fuera del repo (R-7, Decisión 24)
+├── .env.example                 Plantilla de usuario y clave de la base: copiar como .env
 ├── docker-compose.yml           PostgreSQL 16 en el 5433 + Adminer (visor web) en el 8081
 │
 ├── db/
@@ -64,7 +66,11 @@ proyecto_g/
 │       ├── ExportadorDeAlertasTest.java    HU-08 (6 pruebas)
 │       ├── ContratoE2ETest.java            De punta a punta por HTTP real (3 pruebas)
 │       ├── RestriccionesDeBaseDeDatosTest.java  Restricciones de la base (2 pruebas)
-│       └── AlertasE2ETest.java             HU-03/05/06/08 e interfaz, por HTTP real (8 pruebas)
+│       ├── AlertasE2ETest.java             HU-03/05/06/08 e interfaz, por HTTP real (8 pruebas)
+│       ├── SeguridadE2ETest.java           Ataques simulados y controles del Módulo 7 (11 pruebas)
+│       ├── ValidacionEnLaFronteraTest.java Longitud de los campos (3 pruebas)
+│       ├── seguridad/AuditoriaTest.java    El registro no acepta líneas inyectadas (3 pruebas)
+│       └── RequisitosNoFuncionalesTest.java  Medición de RNF-1 y RNF-2 (2 pruebas)
 │   └── src/main/resources/static/  Interfaz web: index.html, css/, js/ (Decisión 21)
 │
 ├── data/
@@ -82,8 +88,9 @@ proyecto_g/
     ├── reglas-de-negocio.md     Lógica de negocio explícita + glosario
     ├── diagrama-dominio.md      Diagrama de clases (Mermaid) + decisiones de modelado
     ├── esquema-bd.md            Modelo entidad–relación (Mermaid) + restricciones
-    ├── decisiones-tecnicas.md   23 decisiones con su alternativa descartada
-    ├── deuda-tecnica.md         13 deudas priorizadas, su costo y cómo pagarlas
+    ├── decisiones-tecnicas.md   27 decisiones con su alternativa descartada
+    ├── deuda-tecnica.md         Deudas priorizadas, su costo y cómo pagarlas
+    ├── seguridad-y-rnf.md       Checklist de seguridad, amenazas y los 2 RNF medidos (Módulo 7)
     ├── modulo-java-hu04.md      Qué entrega HU-04, cómo ejecutarlo y demostrarlo
     ├── mapa-del-proyecto.md     Este documento
     ├── uso-ia.md                Uso de IA y postura del equipo
@@ -144,7 +151,7 @@ contrato de la prueba única y trazabilidad a los insumos— está en
 | [HU-03](historias-usuario.md#hu-03--detectar-fraccionamiento-de-contratos) Fraccionamiento | R-9, R-8 | `dominio/DetectorDeFraccionamiento.java` | `DetectorDeFraccionamientoTest` (9) + `AlertasE2ETest` |
 | [HU-08](historias-usuario.md#hu-08--exportar-el-reporte-de-alertas) Exportar reporte | R-10 | `dominio/ExportadorDeAlertas.java`, `api/AlertaControlador.java` | `ExportadorDeAlertasTest` (6) + `AlertasE2ETest` |
 
-**63 pruebas:** 50 de dominio (rápidas, sin base de datos) y 13 de
+**82 pruebas:** 56 de dominio (rápidas, sin base de datos) y 26 de
 punta a punta por HTTP real contra PostgreSQL, que corren en GitHub
 Actions en cada Pull Request. Cada criterio de aceptación automatizable
 de las 8 historias tiene su prueba;
@@ -157,7 +164,7 @@ Los nombres de las pruebas **son** los criterios de aceptación: al correr
 
 ```bash
 docker compose up -d             # PostgreSQL 16 en localhost:5433 + Adminer en localhost:8081
-cd java && mvn test              # las 63 pruebas
+cd java && mvn test              # las 82 pruebas
 java/ejecutar.sh                 # levanta el endpoint en localhost:8080
 ```
 
@@ -174,8 +181,8 @@ contratos como evidencia (uno en la alcaldía y dos en la gobernación: la
 señal cruza entidades, R-3). Repetir el mismo `curl` vuelve a dar
 `contratosNuevos: 0`: eso es HU-07.
 
-Salida esperada de `mvn test`: `Tests run: 63, Failures: 0, Errors: 0`.
-Las 13 de punta a punta requieren el contenedor arriba; las otras 50 no
+Salida esperada de `mvn test`: `Tests run: 82, Failures: 0, Errors: 0`.
+Las 26 de punta a punta requieren el contenedor arriba; las otras 56 no
 tocan la base.
 
 ## 6. Estado y pendientes
