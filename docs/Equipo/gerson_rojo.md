@@ -20,6 +20,13 @@
 
 Análisis y especificación de requisitos: planteamiento del problema, historias de usuario y criterios de aceptación del backlog, con la lógica de negocio que define cuándo un patrón de contratación se considera sospechoso.
 
+## Aporte en la entrega de las 8 historias
+
+- Cierre del backlog: criterios de aceptación de HU-03, HU-05, HU-06 y HU-08, y su implementación con pruebas (asistida por IA, ver [uso-ia.md](../uso-ia.md)).
+- Reglas de negocio R-5 (nombres), R-9 (fraccionamiento) y R-10 (exportación segura), con sus supuestos pendientes de validar con un analista.
+- Informe de deuda técnica priorizado ([deuda-tecnica.md](../deuda-tecnica.md)).
+- Interfaz web para el analista e integración continua en GitHub Actions.
+
 ## Conocimientos técnicos
 
 - Ingeniería de requisitos (historias de usuario, criterios de aceptación, trazabilidad).
