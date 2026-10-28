@@ -1,0 +1,54 @@
+# Integración continua: en cada push y en cada Pull Request se levanta
+# PostgreSQL 16 con el esquema real (db/schema.sql) y se corre toda la suite
+# (dominio + punta a punta por HTTP). Si algo falla, el PR queda en rojo y
+# no se fusiona: la rama principal siempre verde.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_DB: dac
+          POSTGRES_USER: dac_user
+          POSTGRES_PASSWORD: dac_pass
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U dac_user -d dac"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Crear el esquema de la base
+        env:
+          PGPASSWORD: dac_pass
+        run: psql -h localhost -p 5433 -U dac_user -d dac -v ON_ERROR_STOP=1 -f db/schema.sql
+
+      - name: Correr las pruebas
+        working-directory: java
+        run: mvn -B test
+
+      - name: Guardar el reporte de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-pruebas
+          path: java/target/surefire-reports/
