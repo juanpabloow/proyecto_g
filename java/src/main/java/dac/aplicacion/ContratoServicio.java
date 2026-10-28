@@ -8,12 +8,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.format.DateTimeParseException;
+import java.util.*;
 
 /**
  * Orquesta la rebanada completa:
  * CSV → dominio → persistencia → detección → respuesta.
+ *
+ * <p>Rendimiento (RNF-1, Módulo 7): antes se hacían varias consultas por
+ * cada fila del archivo (buscar entidad, contratista, funcionario y
+ * contrato), y cada consulta obligaba a Hibernate a revisar todo lo cargado
+ * hasta ese momento. Ahora se lee lo que ya existe <b>una sola vez</b> al
+ * empezar y se trabaja con índices en memoria; a la base solo van las
+ * inserciones. La idempotencia no cambia: la sigue garantizando
+ * {@code uq_contrato_clave_natural}.
  */
 @Service
 public class ContratoServicio {
@@ -56,44 +64,48 @@ public class ContratoServicio {
         ResultadoCarga carga = cargador.cargarDesde(csv);
         List<ConflictoDeDuplicado> conflictos = new ArrayList<>(carga.conflictos());
 
-        // 2. Persistencia: guardar solo los contratos nuevos (idempotencia — HU-07)
+        // 2. Validar tipos ANTES de escribir: un archivo con un valor malo no deja nada a medias
+        Map<Contrato, BigDecimal> montos = new HashMap<>();
+        Map<Contrato, LocalDate> fechas = new HashMap<>();
+        for (Contrato c : carga.contratos()) {
+            montos.put(c, aMonto(c.monto(), carga.filaDe(c)));
+            fechas.put(c, aFecha(c.fecha(), carga.filaDe(c)));
+        }
+
+        // 3. Lo que ya existe, leído una sola vez
+        Indice indice = new Indice();
+
+        // 4. Persistencia: guardar solo los contratos nuevos (idempotencia — HU-07)
         int nuevos = 0;
         for (Contrato c : carga.contratos()) {
-            BigDecimal monto = aMonto(c.monto());
-            LocalDate fecha = aFecha(c.fecha());
-
-            EntidadJpa entidad = entidadRepo.findByNombre(c.entidad())
-                    .orElseGet(() -> entidadRepo.save(new EntidadJpa(c.entidad())));
-
-            var existente = contratoRepo.findByNumeroContratoAndEntidad(c.numeroContrato(), entidad);
-            if (existente.isPresent()) {
+            ContratoJpa existente = indice.contratos.get(c.claveNatural());
+            if (existente != null) {
                 // HU-06: el contrato ya estaba en la base; si trae datos distintos, se reporta
-                List<String> distintos = camposDistintos(existente.get(), c, monto, fecha);
+                List<String> distintos = camposDistintos(existente, c, montos.get(c), fechas.get(c));
                 if (!distintos.isEmpty()) {
                     conflictos.add(new ConflictoDeDuplicado(carga.filaDe(c), c.numeroContrato(),
                             c.entidad(), ConflictoDeDuplicado.YA_EN_LA_BASE, distintos));
                 }
                 continue;
             }
-
-            ContratistaJpa contratista = contratistaRepo.findByNombre(c.contratista())
-                    .orElseGet(() -> contratistaRepo.save(new ContratistaJpa(c.contratista())));
-
-            FuncionarioJpa funcionario = funcionarioRepo.findByNombre(c.funcionario())
-                    .orElseGet(() -> funcionarioRepo.save(new FuncionarioJpa(c.funcionario())));
-
-            contratoRepo.save(new ContratoJpa(
-                    c.numeroContrato(), entidad, contratista, funcionario, monto, fecha));
+            ContratoJpa nuevo = contratoRepo.save(new ContratoJpa(c.numeroContrato(),
+                    indice.entidad(c.entidad()), indice.contratista(c.contratista()),
+                    indice.funcionario(c.funcionario()), montos.get(c), fechas.get(c)));
+            indice.agregar(nuevo);
             nuevos++;
         }
 
-        // 3. Detección sobre el histórico completo en BD (HU-07)
-        List<Contrato> historico = historico();
+        // 5. Detección sobre el histórico completo (HU-07), en orden de carga
+        List<Contrato> historico = indice.historico();
         List<Alerta> alertas = detector.detectar(historico);
         List<AlertaFraccionamiento> fraccionamientos = detectorFraccionamiento.detectar(historico);
 
-        // 4. Persistir cada alerta de reincidencia con su evidencia (HU-02)
-        alertas.forEach(this::guardarAlerta);
+        // 6. Persistir cada alerta de reincidencia con su evidencia (HU-02)
+        Map<String, AlertaJpa> alertasGuardadas = new HashMap<>();
+        alertaRepo.findAll().forEach(a -> alertasGuardadas.put(clave(a.getContratista(), a.getFuncionario()), a));
+        for (Alerta alerta : alertas) {
+            guardarAlerta(alerta, indice, alertasGuardadas);
+        }
 
         return new ResultadoServicio(nuevos, historico.size(), carga.duplicadosIgnorados(),
                 carga.filasDescartadas(), conflictos, alertas, fraccionamientos);
@@ -105,7 +117,7 @@ public class ContratoServicio {
      */
     @Transactional(readOnly = true)
     public ResumenDeAlertas consultarAlertas() {
-        List<Contrato> historico = historico();
+        List<Contrato> historico = contratoRepo.findAllConFetch().stream().map(ContratoServicio::aDominio).toList();
         return new ResumenDeAlertas(historico.size(),
                 detector.detectar(historico),
                 detectorFraccionamiento.detectar(historico));
@@ -119,20 +131,38 @@ public class ContratoServicio {
     }
 
     /**
-     * Todos los contratos de la base, en el orden en que se cargaron. El orden
-     * fijo importa: con nombres normalizados (HU-05) la alerta toma el nombre
-     * del primer contrato del par, y debe ser siempre el mismo.
+     * Guarda la alerta y los contratos que la originaron. Es idempotente:
+     * uq_alerta_par admite una sola alerta por par y tipo, así que volver a
+     * correr la detección sobre los mismos datos no duplica nada. Si el par ya
+     * tenía alerta y aparecieron contratos nuevos, se suman a su evidencia.
      */
-    private List<Contrato> historico() {
-        return contratoRepo.findAllConFetch().stream()
-                .map(j -> Contrato.de(
-                        j.getNumeroContrato(),
-                        j.getEntidad().getNombre(),
-                        j.getContratista().getNombre(),
-                        j.getFuncionario().getNombre(),
-                        j.getMonto() == null ? "" : j.getMonto().toPlainString(),
-                        j.getFecha() == null ? "" : j.getFecha().toString()))
-                .toList();
+    private void guardarAlerta(Alerta alerta, Indice indice, Map<String, AlertaJpa> guardadas) {
+        ContratoJpa primero = indice.contratos.get(alerta.evidencia().get(0).claveNatural());
+        ContratistaJpa contratista = primero.getContratista();
+        FuncionarioJpa funcionario = primero.getFuncionario();
+
+        AlertaJpa fila = guardadas.computeIfAbsent(clave(contratista, funcionario),
+                k -> alertaRepo.save(new AlertaJpa(contratista, funcionario)));
+
+        for (Contrato c : alerta.evidencia()) {
+            ContratoJpa contrato = indice.contratos.get(c.claveNatural());
+            if (contrato != null) fila.getEvidencia().add(contrato);
+        }
+        alertaRepo.save(fila);
+    }
+
+    private static String clave(ContratistaJpa contratista, FuncionarioJpa funcionario) {
+        return contratista.getId() + ":" + funcionario.getId();
+    }
+
+    private static Contrato aDominio(ContratoJpa j) {
+        return Contrato.de(
+                j.getNumeroContrato(),
+                j.getEntidad().getNombre(),
+                j.getContratista().getNombre(),
+                j.getFuncionario().getNombre(),
+                j.getMonto() == null ? "" : j.getMonto().toPlainString(),
+                j.getFecha() == null ? "" : j.getFecha().toString());
     }
 
     /** HU-06: compara la versión guardada con la que llega en el archivo. */
@@ -142,7 +172,7 @@ public class ContratoServicio {
         if (!guardado.getContratista().getNombre().equals(nuevo.contratista())) distintos.add("contratista");
         if (!guardado.getFuncionario().getNombre().equals(nuevo.funcionario())) distintos.add("funcionario");
         if (!mismoMonto(guardado.getMonto(), monto)) distintos.add("monto");
-        if (!java.util.Objects.equals(guardado.getFecha(), fecha)) distintos.add("fecha");
+        if (!Objects.equals(guardado.getFecha(), fecha)) distintos.add("fecha");
         return distintos;
     }
 
@@ -153,48 +183,75 @@ public class ContratoServicio {
 
     /**
      * El dominio trata monto y fecha como texto (R-8) y R-6 dice que estar
-     * vacíos no descarta la fila: la señal de reincidencia no los usa. Aquí
-     * el vacío se convierte en NULL en lugar de romper la carga completa.
-     * Un valor mal escrito (no vacío) sí rechaza el archivo con 400.
+     * vacíos no descarta la fila. Un valor mal escrito o un monto negativo sí
+     * rechazan el archivo con 400 y un mensaje que nombra la fila (Módulo 7:
+     * validación en la frontera, antes de que la base responda con un 500).
      */
-    private static BigDecimal aMonto(String monto) {
+    private static BigDecimal aMonto(String monto, int fila) {
         if (monto == null || monto.isBlank()) return null;
+        BigDecimal valor;
         try {
-            return new BigDecimal(monto.strip());
+            valor = new BigDecimal(monto.strip());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Monto no válido: \"" + monto + "\"");
+            throw new IllegalArgumentException("Fila " + fila + ": monto no válido \"" + recorte(monto) + "\"");
         }
+        if (valor.signum() < 0) {
+            throw new IllegalArgumentException("Fila " + fila + ": el monto no puede ser negativo (R-8)");
+        }
+        return valor;
     }
 
-    private static LocalDate aFecha(String fecha) {
+    private static LocalDate aFecha(String fecha, int fila) {
         if (fecha == null || fecha.isBlank()) return null;
         try {
             return LocalDate.parse(fecha.strip());
-        } catch (java.time.format.DateTimeParseException e) {
-            throw new IllegalArgumentException("Fecha no válida (se espera AAAA-MM-DD): \"" + fecha + "\"");
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("Fila " + fila + ": fecha no válida \"" + recorte(fecha)
+                    + "\" (se espera AAAA-MM-DD)");
         }
     }
 
+    private static String recorte(String valor) {
+        return valor.length() > 40 ? valor.substring(0, 40) + "…" : valor;
+    }
+
     /**
-     * Guarda la alerta y los contratos que la originaron. Es idempotente:
-     * uq_alerta_par admite una sola alerta por par y tipo, así que volver a
-     * correr la detección sobre los mismos datos no duplica nada — la misma
-     * idea del problema duro, aplicada al resultado. Si el par ya tenía
-     * alerta y aparecieron contratos nuevos, se suman a su evidencia.
+     * Lo que ya está en la base, por nombre o por clave natural, para no
+     * consultar fila por fila. Vive solo durante una carga.
      */
-    private void guardarAlerta(Alerta alerta) {
-        ContratistaJpa contratista = contratistaRepo.findByNombre(alerta.contratista()).orElseThrow();
-        FuncionarioJpa funcionario = funcionarioRepo.findByNombre(alerta.funcionario()).orElseThrow();
+    private final class Indice {
+        final Map<String, EntidadJpa> entidades = new HashMap<>();
+        final Map<String, ContratistaJpa> contratistas = new HashMap<>();
+        final Map<String, FuncionarioJpa> funcionarios = new HashMap<>();
+        final Map<String, ContratoJpa> contratos = new LinkedHashMap<>();
 
-        AlertaJpa fila = alertaRepo
-                .findByContratistaAndFuncionarioAndTipo(contratista, funcionario, AlertaJpa.REINCIDENCIA)
-                .orElseGet(() -> alertaRepo.save(new AlertaJpa(contratista, funcionario)));
-
-        for (Contrato c : alerta.evidencia()) {
-            entidadRepo.findByNombre(c.entidad())
-                    .flatMap(e -> contratoRepo.findByNumeroContratoAndEntidad(c.numeroContrato(), e))
-                    .ifPresent(fila.getEvidencia()::add);
+        Indice() {
+            entidadRepo.findAll().forEach(e -> entidades.put(e.getNombre(), e));
+            contratistaRepo.findAll().forEach(c -> contratistas.put(c.getNombre(), c));
+            funcionarioRepo.findAll().forEach(f -> funcionarios.put(f.getNombre(), f));
+            contratoRepo.findAllConFetch().forEach(this::agregar);
         }
-        alertaRepo.save(fila);
+
+        void agregar(ContratoJpa c) {
+            contratos.put(Contrato.de(c.getNumeroContrato(), c.getEntidad().getNombre(), "", "", "", "")
+                    .claveNatural(), c);
+        }
+
+        EntidadJpa entidad(String nombre) {
+            return entidades.computeIfAbsent(nombre, n -> entidadRepo.save(new EntidadJpa(n)));
+        }
+
+        ContratistaJpa contratista(String nombre) {
+            return contratistas.computeIfAbsent(nombre, n -> contratistaRepo.save(new ContratistaJpa(n)));
+        }
+
+        FuncionarioJpa funcionario(String nombre) {
+            return funcionarios.computeIfAbsent(nombre, n -> funcionarioRepo.save(new FuncionarioJpa(n)));
+        }
+
+        /** En orden de carga: con HU-05 la alerta toma el nombre del primer contrato del par. */
+        List<Contrato> historico() {
+            return contratos.values().stream().map(ContratoServicio::aDominio).toList();
+        }
     }
 }
