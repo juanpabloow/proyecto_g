@@ -30,6 +30,7 @@ del proyecto están en [esqueleto/rebanada.md](../esqueleto/rebanada.md).
 Requiere **JDK 21+**, **Maven** y **Docker**.
 
 ```bash
+cp .env.example .env         # una sola vez: usuario y clave de la base (no se versiona)
 docker compose up -d db      # PostgreSQL en localhost:5433, esquema y datos aplicados
 cd java && mvn test          # las pruebas de punta a punta contra la BD real
 java/ejecutar.sh             # levanta el endpoint en localhost:8080
@@ -64,7 +65,7 @@ java/
 ├── pom.xml                              Maven: Spring Boot web + JPA + PostgreSQL + JUnit
 ├── ejecutar.sh                          run | build | package
 ├── src/main/resources/
-│   └── application.properties           Conexión a localhost:5433; ddl-auto=none (Decisión 15)
+│   └── application.properties           Conexión a localhost:5433 con usuario y clave de .env; ddl-auto=none (Decisión 15)
 ├── src/main/java/dac/
 │   ├── DacApplication.java              Arranque de Spring Boot
 │   ├── api/

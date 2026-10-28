@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DAC — Detector de Alertas de Contratación</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor encabezado__fila">
+      <div>
+        <p class="etiqueta">DAC</p>
+        <h1>Detector de Alertas de Contratación</h1>
+        <p class="encabezado__sub">Señales de posible soborno o extorsión en la contratación pública, cada una con la evidencia que la originó.</p>
+      </div>
+      <a class="boton boton--claro" id="btn-exportar" href="api/alertas/exportar" download>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>
+        Exportar reporte (CSV)
+      </a>
+    </div>
+  </header>
+
+  <main class="contenedor">
+    <p class="aviso" role="note">
+      <strong>DAC no acusa a nadie.</strong> Una alerta es una hipótesis que una persona debe verificar con los contratos que la originaron (R-4).
+    </p>
+
+    <section class="tarjeta carga" aria-labelledby="titulo-carga">
+      <h2 id="titulo-carga">Cargar contratos</h2>
+      <p class="ayuda">Archivo CSV con las columnas <code>numero_contrato, entidad, contratista, funcionario, monto, fecha</code>. Cargar el mismo archivo dos veces no duplica nada.</p>
+
+      <form id="form-carga">
+        <label class="zona" id="zona" for="archivo">
+          <input type="file" id="archivo" name="archivo" accept=".csv,text/csv">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          <span class="zona__texto" id="zona-texto">Arrastra el archivo aquí o <u>haz clic para elegirlo</u></span>
+        </label>
+        <button type="submit" class="boton" id="btn-cargar" disabled>Analizar archivo</button>
+      </form>
+      <p class="estado" id="estado" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="metricas" aria-label="Resumen">
+      <div class="metrica"><span class="metrica__valor" id="m-total">—</span><span class="metrica__nombre">contratos en la base</span></div>
+      <div class="metrica"><span class="metrica__valor" id="m-nuevos">—</span><span class="metrica__nombre">nuevos en esta carga</span></div>
+      <div class="metrica metrica--alerta"><span class="metrica__valor" id="m-alertas">—</span><span class="metrica__nombre">alertas activas</span></div>
+      <div class="metrica"><span class="metrica__valor" id="m-revisar">—</span><span class="metrica__nombre">filas para revisar</span></div>
+    </section>
+
+    <section class="tarjeta" aria-labelledby="titulo-resultados">
+      <h2 id="titulo-resultados" class="oculto">Resultados</h2>
+      <div class="pestanas" role="tablist" aria-label="Resultados">
+        <button role="tab" id="tab-reincidencia" aria-controls="panel-reincidencia" aria-selected="true">Reincidencia <span class="contador" id="c-reincidencia">0</span></button>
+        <button role="tab" id="tab-fraccionamiento" aria-controls="panel-fraccionamiento" aria-selected="false" tabindex="-1">Fraccionamiento <span class="contador" id="c-fraccionamiento">0</span></button>
+        <button role="tab" id="tab-descartes" aria-controls="panel-descartes" aria-selected="false" tabindex="-1">Filas descartadas <span class="contador" id="c-descartes">0</span></button>
+        <button role="tab" id="tab-conflictos" aria-controls="panel-conflictos" aria-selected="false" tabindex="-1">Conflictos <span class="contador" id="c-conflictos">0</span></button>
+      </div>
+
+      <div role="tabpanel" id="panel-reincidencia" aria-labelledby="tab-reincidencia">
+        <p class="explicacion">El mismo contratista con el mismo funcionario en 2 o más contratos, aunque sean de entidades distintas. Los nombres escritos distinto (mayúsculas, tildes, puntos) se reconocen como el mismo (HU-05).</p>
+        <div id="lista-reincidencia" class="lista"></div>
+      </div>
+      <div role="tabpanel" id="panel-fraccionamiento" aria-labelledby="tab-fraccionamiento" hidden>
+        <p class="explicacion">Un contratista con varios contratos pequeños en la misma entidad, dentro de una ventana de días, que juntos alcanzan el tope de cuantía (HU-03).</p>
+        <div id="lista-fraccionamiento" class="lista"></div>
+      </div>
+      <div role="tabpanel" id="panel-descartes" aria-labelledby="tab-descartes" hidden>
+        <p class="explicacion">Filas de la última carga que no se convirtieron en contrato, con el motivo. El resto del archivo se analizó igual (HU-04).</p>
+        <div id="lista-descartes" class="lista"></div>
+      </div>
+      <div role="tabpanel" id="panel-conflictos" aria-labelledby="tab-conflictos" hidden>
+        <p class="explicacion">Contratos repetidos que traían datos distintos. Se conservó la primera versión; aquí ves qué cambió para decidir cuál es la correcta (HU-06).</p>
+        <div id="lista-conflictos" class="lista"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie contenedor">
+    Proyecto de Ingeniería de Software · Utadeo 2026-2 · Gerson Rojo, Juan Pablo Cardozo, Yerson Pérez
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

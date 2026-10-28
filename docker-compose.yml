@@ -3,9 +3,11 @@ services:
     image: postgres:16
     container_name: dac_db
     environment:
-      POSTGRES_DB: dac
-      POSTGRES_USER: dac_user
-      POSTGRES_PASSWORD: dac_pass
+      # Usuario y clave salen del archivo .env (copia de .env.example),
+      # que Git ignora: los secretos no se versionan (Decisión 24).
+      POSTGRES_DB: ${DB_NAME:-dac}
+      POSTGRES_USER: ${DB_USER:?Falta DB_USER: copia .env.example como .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD: copia .env.example como .env}
     ports:
       - "5433:5432"
     volumes:
@@ -14,7 +16,7 @@ services:
       - dac_data:/var/lib/postgresql/data
 
   # Visor web de la base de datos: http://localhost:8081
-  # Servidor db · Usuario dac_user · Clave dac_pass · Base dac
+  # Servidor db · Usuario y clave: los de tu archivo .env · Base dac
   adminer:
     image: adminer:4
     container_name: dac_adminer

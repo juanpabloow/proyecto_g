@@ -13,16 +13,28 @@ puntos relativos (1 = trivial, 8 = requiere investigación).
 
 ## Backlog
 
-| ID | Historia | Prioridad | Puntos | Estado |
-|---|---|---|---|---|
-| [HU-01](#hu-01--cargar-contratos-desde-un-archivo-csv) | Cargar contratos desde un archivo CSV | **Must** | 3 | ✅ Hecha |
-| [HU-02](#hu-02--detectar-reincidencia-contratista-funcionario-historia-central) | Detectar reincidencia contratista–funcionario | **Must** | 5 | ✅ Hecha |
-| [HU-04](#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) | No generar alertas a partir de filas incompletas | Should | 2 | ✅ Hecha *(módulo Java)* |
-| [HU-05](#hu-05--reconocer-el-mismo-nombre-escrito-de-formas-distintas) | Reconocer el mismo nombre escrito distinto | Should | 5 | ⬜ Pendiente |
-| [HU-06](#hu-06--saber-cuándo-un-duplicado-traía-datos-distintos) | Saber cuándo un duplicado traía datos distintos | Could | 3 | ⬜ Pendiente |
-| [HU-07](#hu-07--conservar-los-contratos-entre-ejecuciones) | Conservar los contratos entre ejecuciones | Should | 8 | ✅ Hecha |
-| [HU-03](#hu-03--detectar-fraccionamiento-de-contratos) | Detectar fraccionamiento de contratos | Could | 8 | ⬜ Fuera de esta entrega |
-| [HU-08](#hu-08--exportar-el-reporte-de-alertas) | Exportar el reporte de alertas | Could | 3 | ⬜ Pendiente |
+| ID | Historia | Prioridad | Puntos | Estado | Pruebas |
+|---|---|---|---|---|---|
+| [HU-01](#hu-01--cargar-contratos-desde-un-archivo-csv) | Cargar contratos desde un archivo CSV | **Must** | 3 | ✅ Hecha | `CargadorDeContratosTest` |
+| [HU-02](#hu-02--detectar-reincidencia-contratista-funcionario-historia-central) | Detectar reincidencia contratista–funcionario | **Must** | 5 | ✅ Hecha | `DetectorDeReincidenciasTest` |
+| [HU-04](#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) | No generar alertas a partir de filas incompletas | Should | 2 | ✅ Hecha | `FilasIncompletasTest` |
+| [HU-05](#hu-05--reconocer-el-mismo-nombre-escrito-de-formas-distintas) | Reconocer el mismo nombre escrito distinto | Should | 5 | ✅ Hecha *(regla provisional)* | `NombresVariantesTest` |
+| [HU-06](#hu-06--saber-cuándo-un-duplicado-traía-datos-distintos) | Saber cuándo un duplicado traía datos distintos | Could | 3 | ✅ Hecha | `ConflictosDeDuplicadosTest` |
+| [HU-07](#hu-07--conservar-los-contratos-entre-ejecuciones) | Conservar los contratos entre ejecuciones | Should | 8 | ✅ Hecha | `ContratoE2ETest` |
+| [HU-03](#hu-03--detectar-fraccionamiento-de-contratos) | Detectar fraccionamiento de contratos | Could | 8 | ✅ Hecha *(regla provisional)* | `DetectorDeFraccionamientoTest` |
+| [HU-08](#hu-08--exportar-el-reporte-de-alertas) | Exportar el reporte de alertas | Could | 3 | ✅ Hecha | `ExportadorDeAlertasTest` |
+
+**8 de 8 historias hechas.** Cada una tiene sus pruebas de dominio y,
+además, una prueba de punta a punta por HTTP real en `ContratoE2ETest` o
+`AlertasE2ETest`. Todas corren en la integración continua
+(`.github/workflows/ci.yml`) en cada Pull Request.
+
+Dos historias quedan con una **regla de negocio provisional**: HU-05
+(qué diferencias de escritura se ignoran, [Decisión 19](decisiones-tecnicas.md))
+y HU-03 (tope y ventana de días, [Decisión 20](decisiones-tecnicas.md)).
+Funcionan y están probadas, pero sus parámetros los propuso el equipo y
+falta confirmarlos con un analista real (S-1). Se registra como deuda en
+[deuda-tecnica.md](deuda-tecnica.md).
 
 Los roles citados (S-1, S-2, S-3…) son los de
 [stakeholders.md](stakeholders.md).
@@ -214,36 +226,64 @@ y necesita validación de S-1 ([R-5](reglas-de-negocio.md)).
 > "ACME S.A.S." se reconozcan como el mismo contratista, **para** no
 > perder reincidencias reales por una diferencia de escritura.
 
-**Criterios de aceptación (borrador)**
+**Criterios de aceptación**
 
 1. **Dado** dos contratos del mismo par escritos con distinta
-   capitalización o espacios sobrantes, **cuando** ejecuto la detección,
-   **entonces** se genera la alerta.
+   capitalización, espacios sobrantes, tildes o puntos, **cuando** ejecuto
+   la detección, **entonces** se genera la alerta.
+   → `NombresVariantesTest` → *capitalización o espacios sobrantes generan la alerta*,
+   *tildes y puntos de la razón social no separan al contratista*
 2. **Dado** una normalización aplicada, **cuando** veo la alerta,
    **entonces** se muestran los nombres **originales**, no los
    normalizados (el analista debe reconocer el dato de la fuente).
+   → *la alerta muestra los nombres originales, no los normalizados*
+3. **Dado** dos empresas con distinto sufijo societario ("ACME SAS" y
+   "ACME LTDA") o apellidos que solo difieren en la ñ ("Peña" y "Pena"),
+   **cuando** ejecuto la detección, **entonces** **no** se unen.
+   → *sufijos societarios distintos siguen siendo empresas distintas*,
+   *la ñ se conserva*
 
-**Riesgo:** normalizar de más une a dos empresas distintas de nombre
-parecido, y eso señala a alguien por error (S-6). Las reglas concretas
-(tildes, sufijos societarios, alias) deben validarse con S-1 antes de
-implementarse. Ver [R-5](reglas-de-negocio.md).
+**Regla aplicada ([Decisión 19](decisiones-tecnicas.md), provisional):** se
+ignoran mayúsculas, espacios sobrantes, tildes, puntos y comas. **No** se
+quitan sufijos societarios ni se usan alias, porque unir de más señala a
+quien no es (S-6). La normalización solo se usa para comparar; en la base
+y en pantalla queda el nombre original.
+
+**Código:** `java/src/main/java/dac/dominio/NormalizadorDeNombres.java` ·
+**De punta a punta:** `AlertasE2ETest` → *nombres escritos distinto forman una sola alerta*
+con `data/contratos_nombres_variantes_ejemplo.csv`.
 
 ---
 
 ## HU-06 — Saber cuándo un duplicado traía datos distintos
 
 > **Como** analista (S-1), **quiero** enterarme cuando dos filas con el
-> mismo contrato traen montos o fechas distintas, **para** decidir cuál
-> es la versión correcta en vez de perder la corrección en silencio.
+> mismo contrato traen montos, fechas o personas distintas, **para**
+> decidir cuál es la versión correcta en vez de perder la corrección en
+> silencio.
 
-**Criterio de aceptación**
+**Criterios de aceptación**
 
 1. **Dado** dos filas con la misma clave y montos distintos, **cuando**
    cargo el archivo, **entonces** el contrato se carga una sola vez
-   **y** el conflicto queda reportado.
+   **y** el conflicto queda reportado con su número de fila.
+   → `ConflictosDeDuplicadosTest` → *misma clave con montos distintos se carga una vez y reporta el conflicto*
+2. **Dado** un duplicado idéntico, **cuando** lo cargo, **entonces** se
+   ignora sin reportar conflicto.
+   → *un duplicado idéntico no es un conflicto*
+3. **Dado** un duplicado que difiere en varios campos, **cuando** lo
+   cargo, **entonces** el conflicto nombra **todos** los campos distintos.
+   → *el conflicto nombra todos los campos que difieren*
+4. **Dado** un contrato que ya está en la base, **cuando** llega en un
+   archivo nuevo con otro monto, **entonces** no se duplica y el conflicto
+   se reporta contra el "contrato ya guardado en la base".
+   → `AlertasE2ETest` → *un contrato ya guardado que llega con otro monto se reporta como conflicto*
 
-Hoy gana la primera fila sin avisar
-([problema duro §4](problema-duro.md)).
+Sigue ganando la primera versión ([Decisión 6](decisiones-tecnicas.md));
+lo nuevo es que la diferencia ya no se pierde. La pantalla los muestra en
+la pestaña **Conflictos**.
+
+**Código:** `CargadorDeContratos.camposDistintos` y `ContratoServicio.cargarYDetectar`.
 
 ---
 
@@ -257,22 +297,16 @@ Hoy gana la primera fila sin avisar
 
 1. **Dado** un contrato cargado en una ejecución anterior, **cuando**
    vuelvo a cargarlo, **entonces** no se duplica ni genera alerta nueva.
+   → `ContratoE2ETest` → `e2e_carga_persiste_y_es_idempotente`
 2. **Dado** dos archivos que comparten contratos, **cuando** cargo ambos,
    **entonces** cada contrato existe una sola vez.
+   → `AlertasE2ETest` → *nombres escritos distinto forman una sola alerta, persistida una vez*
 
 Es el paso que convierte la idempotencia "dentro de una carga" en
-idempotencia real, y requiere almacenamiento persistente
-([problema duro §5](problema-duro.md)).
-
-**Hecha.** La clave natural pasó a ser una restricción de la base de datos
-(`uq_contrato_clave_natural` en [db/schema.sql](../db/schema.sql)), así que
-recargar un contrato ya cargado no lo duplica.
-
-`ContratoServicio.cargarYDetectar` consulta por clave natural antes de
-insertar. Lo verifica `e2e_carga_persiste_y_es_idempotente`
-([esqueleto/rebanada.md §4](../esqueleto/rebanada.md)), que hace la misma
-carga dos veces y exige `contratosNuevos == 0` en la segunda. Lo mismo
-vale para las alertas: `uq_alerta_par` impide que se dupliquen.
+idempotencia real ([problema duro §5](problema-duro.md)). La clave natural
+es una restricción de la base (`uq_contrato_clave_natural` en
+[db/schema.sql](../db/schema.sql)), y `uq_alerta_par` impide que las
+alertas se dupliquen.
 
 ---
 
@@ -282,13 +316,38 @@ vale para las alertas: `uq_alerta_par` impide que se dupliquen.
 > pequeños divididos a propósito para evitar un proceso de mayor cuantía,
 > **para** identificar otra forma común de evadir controles.
 
-**Preguntas abiertas antes de estimarla:** ¿qué ventana de tiempo?, ¿qué
-umbral de monto?, ¿fraccionamiento por contratista, por objeto
-contractual o por funcionario? Requiere además tratar monto y fecha como
-número y fecha, no como texto ([R-8](reglas-de-negocio.md)).
+**Respuestas a las preguntas abiertas ([Decisión 20](decisiones-tecnicas.md), provisional):**
 
-**Estado:** fuera de esta entrega por decisión de alcance
-([Decisión 2](decisiones-tecnicas.md)).
+| Pregunta | Respuesta del equipo | Dónde se cambia |
+|---|---|---|
+| ¿Por qué se agrupa? | Mismo **contratista** (normalizado, HU-05) en la misma **entidad** | `Contrato.contratistaEnEntidad()` |
+| ¿Qué ventana de tiempo? | **30 días** entre el primer y el último contrato | `dac.fraccionamiento.ventana-dias` |
+| ¿Qué umbral de monto? | Cada contrato **por debajo** del tope y la suma **alcanza o supera** el tope de **$100.000.000** | `dac.fraccionamiento.tope` |
+
+**Criterios de aceptación**
+
+1. **Dado** 2 o más contratos del mismo contratista y entidad, cada uno
+   bajo el tope, dentro de la ventana, que suman el tope, **cuando**
+   ejecuto la detección, **entonces** se genera **una** alerta con todos
+   ellos como evidencia y la suma.
+   → `DetectorDeFraccionamientoTest` → *contratos pequeños … generan alerta*
+2. **Dado** contratos que no suman el tope, **entonces** no hay alerta.
+   → *si no suman el tope, no hay alerta*
+3. **Dado** contratos separados por más días que la ventana, **entonces**
+   no se suman. → *contratos fuera de la ventana de días no se suman*
+4. **Dado** contratos en entidades distintas, **entonces** no hay alerta.
+   → *en entidades distintas no es fraccionamiento*
+5. **Dado** un contrato que ya supera el tope, **entonces** no cuenta como
+   fracción. → *un contrato que ya supera el tope no cuenta como fracción*
+6. **Dado** un contrato sin monto o sin fecha, **entonces** no participa
+   (R-8). → *contratos sin monto o sin fecha no participan*
+
+**Código:** `DetectorDeFraccionamiento`, `AlertaFraccionamiento` ·
+**De punta a punta:** `AlertasE2ETest` con `data/contratos_fraccionamiento_ejemplo.csv`.
+La pantalla los muestra en la pestaña **Fraccionamiento**.
+
+**Limitación declarada:** estas alertas se calculan en cada consulta y
+**no se guardan** en la tabla `alerta` (ver [deuda-tecnica.md](deuda-tecnica.md), DT-01).
 
 ---
 
@@ -297,6 +356,26 @@ número y fecha, no como texto ([R-8](reglas-de-negocio.md)).
 > **Como** coordinador del área (S-2), **quiero** exportar las alertas a
 > un archivo, **para** compartirlas con el equipo de investigación
 > (S-3) sin tener que copiar la salida de la consola.
+
+**Criterios de aceptación**
+
+1. **Dado** alertas en la base, **cuando** exporto, **entonces** obtengo
+   un CSV con **una fila por cada contrato de evidencia** (tipo, número de
+   alerta, contratista, funcionario, entidad, número, monto, fecha y
+   detalle). → `ExportadorDeAlertasTest` → *una fila por contrato de evidencia*
+2. **Dado** alertas de fraccionamiento, **entonces** también se exportan,
+   con la suma y el tope. → *incluye también las alertas de fraccionamiento*
+3. **Dado** que no hay alertas, **entonces** el archivo trae solo el
+   encabezado. → *sin alertas, el archivo trae solo el encabezado*
+4. **Dado** que el archivo se abre en Excel, **entonces** las tildes se
+   ven bien (UTF-8 con BOM, separador `;`). → *empieza con BOM*
+5. **Dado** un nombre que empieza por `=`, `+`, `-` o `@`, **entonces** se
+   exporta neutralizado para que Excel no lo ejecute como fórmula
+   (seguridad). → *una celda que parece fórmula se neutraliza*
+
+**Endpoint:** `GET /api/alertas/exportar` (descarga `alertas_dac.csv`) y
+botón **Exportar reporte (CSV)** en la pantalla. ·
+**De punta a punta:** `AlertasE2ETest` → *exporta un CSV descargable*.
 
 ---
 

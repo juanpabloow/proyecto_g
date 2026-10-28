@@ -107,11 +107,13 @@ class DetectorDeReincidenciasTest {
     }
 
     @Test
-    @DisplayName("limitación conocida: nombres escritos distinto no se unen (R-5, HU-05)")
-    void nombres_escritos_distinto_no_se_unen() {
-        assertTrue(detectar(List.of(
+    @DisplayName("HU-05: nombres escritos distinto ya se reconocen como el mismo par (R-5)")
+    void nombres_escritos_distinto_se_unen() {
+        List<Alerta> alertas = detectar(List.of(
                 contrato("001", "ACME SAS", "Juan Pérez"),
-                contrato("002", "acme sas", "juan pérez"))).isEmpty(),
-                "hoy son contratistas distintos: falso negativo documentado, no un descuido");
+                contrato("002", "acme sas", "juan pérez")));
+
+        assertEquals(1, alertas.size(),
+                "antes era un falso negativo documentado; HU-05 lo resolvió");
     }
 }
