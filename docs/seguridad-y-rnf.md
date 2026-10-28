@@ -56,7 +56,7 @@ cualquiera puede repetirla.
 
 **Condiciones de la medición:**
 
-- **Máquina:** runner `ubuntu-latest` de GitHub Actions; la prueba anota
+- **Máquina:** runner `ubuntu-24.04` de GitHub Actions (versión fija); la prueba anota
   núcleos, memoria de la JVM y versión de Java en cada corrida.
 - **Base:** PostgreSQL 16 en contenedor, con el esquema real de `db/schema.sql`.
 - **Datos:** contratos **ficticios** generados con semilla fija (la misma
