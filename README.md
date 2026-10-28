@@ -38,9 +38,13 @@ una alerta es una hipótesis a verificar por una persona
 - Las filas incompletas se descartan y se reportan (HU-04).
 - **Interfaz web** en http://localhost:8080 para cargar el CSV, ver las
   alertas con su evidencia y **exportar el reporte** a Excel (HU-08).
-- **63 pruebas automatizadas:** 50 de dominio y 13 de punta a punta por
-  HTTP real contra PostgreSQL. Corren solas en cada Pull Request
-  (GitHub Actions).
+- **82 pruebas automatizadas:** 56 de dominio y 26 de punta a punta por
+  HTTP real contra PostgreSQL, incluidas pruebas de ataques simulados y la
+  medición de los dos requisitos no funcionales. Corren solas en cada Pull
+  Request (GitHub Actions).
+- **Seguridad básica y RNF (Módulo 7):** checklist con hallazgos
+  corregidos, secretos fuera del repositorio y RNF medidos en
+  [docs/seguridad-y-rnf.md](docs/seguridad-y-rnf.md).
 - Deuda técnica declarada y priorizada en
   [docs/deuda-tecnica.md](docs/deuda-tecnica.md).
 
@@ -85,8 +89,8 @@ Para mirar lo que hay adentro, ve a [Ver los datos](#ver-los-datos).
 cd java && mvn test
 ```
 
-Esperado: `Tests run: 63, Failures: 0, Errors: 0`. Las 50 de dominio no
-necesitan la base; las 13 de punta a punta sí.
+Esperado: `Tests run: 82, Failures: 0, Errors: 0`. Las 56 de dominio no
+necesitan la base; las 26 de punta a punta sí.
 
 ### 3. Levantar el servidor
 
@@ -337,5 +341,6 @@ dónde buscar algo.
 | [Módulo Java — HU-04](docs/modulo-java-hu04.md) | Qué entrega el módulo Java, cómo se relaciona con las demás historias y cómo demostrarlo |
 | [Decisiones técnicas](docs/decisiones-tecnicas.md) | Por qué se decidió cada cosa y qué se descartó |
 | [Equipo](docs/Equipo/) | Rol y aporte de cada integrante |
+| [Seguridad y RNF](docs/seguridad-y-rnf.md) | Checklist de seguridad aplicado, modelo de amenazas, los 2 RNF medidos y la deuda de seguridad |
 | [Deuda técnica](docs/deuda-tecnica.md) | Con qué deuda nos quedamos, cuánto cuesta no pagarla y cómo se paga |
 | [Uso de IA](docs/uso-ia.md) | Declaración del uso de la IA en cada entrega y postura del equipo |
