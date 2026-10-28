@@ -18,29 +18,31 @@ una alerta es una hipótesis a verificar por una persona
 | Yerson Andrés Pérez Cadena | Ingeniero de QA y pruebas | [ficha](docs/Equipo/yerson_cadena.md) |
 | Gerson Geovanni Rojo Rodríguez | Ingeniero de requisitos y analista de negocio | [ficha](docs/Equipo/gerson_rojo.md) |
 
-## Estado actual (Semana 4 — esqueleto andante)
+## Estado actual — backlog completo (8 de 8 historias) e interfaz web
 
-La primera rebanada vertical funciona de punta a punta y cruza las cinco
-fronteras técnicas: HTTP → aplicación → dominio → persistencia real →
-migración. El detalle, con su trazabilidad a las evidencias del proyecto,
-está en [esqueleto/rebanada.md](esqueleto/rebanada.md).
+[![CI](https://github.com/juanpabloow/proyecto_g/actions/workflows/ci.yml/badge.svg)](https://github.com/juanpabloow/proyecto_g/actions/workflows/ci.yml)
 
-- `POST /api/contratos/cargar` recibe el CSV y responde con los contratos
-  nuevos, el total en base de datos, las filas descartadas y las alertas.
-- Persiste en **PostgreSQL** real ([db/schema.sql](db/schema.sql), 6 tablas).
-- **Problema duro resuelto:** un contrato duplicado no genera una alerta
-  falsa ([detalle](docs/problema-duro.md)). Y ahora la clave natural es una
-  restricción de la base, así que la idempotencia también vale **entre
-  ejecuciones** ([HU-07](docs/historias-usuario.md)).
-- Detecta la señal del MVP: reincidencia contratista–funcionario, sobre el
-  histórico completo en base de datos.
-- **[HU-04](docs/historias-usuario.md):** una fila sin contratista o sin
-  funcionario no produce una alerta sobre nadie — se descarta y se reporta
-  ([Decisión 12](docs/decisiones-tecnicas.md)).
-- Las alertas y su evidencia quedan guardadas en la base, no solo
-  devueltas en la respuesta.
-- **28 pruebas automatizadas**, todas pasando: 25 de dominio y 3 de punta
-  a punta por HTTP real contra la base de datos real.
+- **Las 8 historias del backlog están hechas**, cada una con sus pruebas
+  ([historias de usuario](docs/historias-usuario.md)).
+- **Dos señales de alerta**, cada una con los contratos que la originaron:
+  - **Reincidencia** (HU-02): el mismo contratista con el mismo
+    funcionario en 2 o más contratos, aunque sean de entidades distintas.
+  - **Fraccionamiento** (HU-03): contratos pequeños del mismo contratista
+    en la misma entidad que, en 30 días, suman el tope de cuantía.
+- **Nombres escritos distinto** ("ACME SAS", "acme s.a.s.") se reconocen
+  como el mismo (HU-05).
+- **Problema duro resuelto:** cargar el mismo archivo dos veces no duplica
+  nada, ni dentro de una carga ni entre ejecuciones (HU-07,
+  [detalle](docs/problema-duro.md)). Si el duplicado traía datos
+  distintos, se **reporta el conflicto** en vez de perderlo (HU-06).
+- Las filas incompletas se descartan y se reportan (HU-04).
+- **Interfaz web** en http://localhost:8080 para cargar el CSV, ver las
+  alertas con su evidencia y **exportar el reporte** a Excel (HU-08).
+- **63 pruebas automatizadas:** 50 de dominio y 13 de punta a punta por
+  HTTP real contra PostgreSQL. Corren solas en cada Pull Request
+  (GitHub Actions).
+- Deuda técnica declarada y priorizada en
+  [docs/deuda-tecnica.md](docs/deuda-tecnica.md).
 
 Todo el sistema está en **un solo lenguaje**: Java 21 con Spring Boot. La
 implementación paralela en Python se consolidó aquí
@@ -71,8 +73,8 @@ Para mirar lo que hay adentro, ve a [Ver los datos](#ver-los-datos).
 cd java && mvn test
 ```
 
-Esperado: `Tests run: 28, Failures: 0, Errors: 0`. Las 25 de dominio no
-necesitan la base; las 3 de punta a punta sí.
+Esperado: `Tests run: 63, Failures: 0, Errors: 0`. Las 50 de dominio no
+necesitan la base; las 13 de punta a punta sí.
 
 ### 3. Levantar el servidor
 
@@ -85,12 +87,35 @@ para los comandos siguientes.
 
 ### 4. Usarlo
 
+**Desde el navegador:** abre **http://localhost:8080**, arrastra un CSV
+(por ejemplo `data/contratos_ejemplo.csv`) y pulsa **Analizar archivo**.
+Las pestañas muestran las alertas de reincidencia y de fraccionamiento
+con su evidencia, las filas descartadas y los conflictos. El botón
+**Exportar reporte (CSV)** descarga las alertas para abrirlas en Excel.
+
+Para ver cada señal hay un archivo de ejemplo:
+
+| Archivo | Qué muestra |
+|---|---|
+| `data/contratos_ejemplo.csv` | 1 reincidencia (ACME SAS + Juan Pérez) y 1 fraccionamiento en la Gobernación |
+| `data/contratos_incompletos_ejemplo.csv` | Filas descartadas y un duplicado (HU-04) |
+| `data/contratos_nombres_variantes_ejemplo.csv` | El mismo par escrito de tres formas (HU-05) |
+| `data/contratos_fraccionamiento_ejemplo.csv` | 3 contratos que fraccionan 105 millones en 18 días (HU-03) |
+
+**Desde la terminal:**
+
 ```bash
 curl -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
 ```
 
 Responde `contratosNuevos`, `totalEnBd`, `duplicadosIgnorados`,
-`filasDescartadas` y `alertas` con su evidencia.
+`filasDescartadas`, `conflictos`, `alertas` y `alertasFraccionamiento`
+con su evidencia. Otros endpoints:
+
+```bash
+curl http://localhost:8080/api/alertas                       # estado actual
+curl -OJ http://localhost:8080/api/alertas/exportar          # descarga alertas_dac.csv
+```
 
 > Los datos de `data/contratos_ejemplo.csv` son **ficticios**. Los
 > archivos con datos reales van en `data/privado/`, que no se sube al
@@ -292,7 +317,7 @@ dónde buscar algo.
 | [Visión del producto](docs/vision-producto.md) | Qué problema resuelve, para quién, alcance y métricas de éxito |
 | [Stakeholders](docs/stakeholders.md) | Quiénes están involucrados y qué exige cada uno del diseño |
 | [Problema duro](docs/problema-duro.md) | Idempotencia: por qué es el problema duro y hasta dónde está resuelto |
-| [Historias de usuario](docs/historias-usuario.md) | Backlog priorizado y la historia central desarrollada a fondo |
+| [Historias de usuario](docs/historias-usuario.md) | Las 8 historias con sus criterios y las pruebas que los verifican |
 | [Reglas de negocio](docs/reglas-de-negocio.md) | Qué cuenta como alerta, glosario del dominio y limitaciones conocidas |
 | [Diagrama de dominio](docs/diagrama-dominio.md) | Las clases del sistema y por qué están modeladas así |
 | [Esquema de base de datos](docs/esquema-bd.md) | Modelo entidad–relación: qué se guarda y cómo se relaciona |
@@ -300,4 +325,5 @@ dónde buscar algo.
 | [Módulo Java — HU-04](docs/modulo-java-hu04.md) | Qué entrega el módulo Java, cómo se relaciona con las demás historias y cómo demostrarlo |
 | [Decisiones técnicas](docs/decisiones-tecnicas.md) | Por qué se decidió cada cosa y qué se descartó |
 | [Equipo](docs/Equipo/) | Rol y aporte de cada integrante |
-| [Uso de IA](docs/uso-ia.md) | Cómo se usó la IA y la postura del equipo |
+| [Deuda técnica](docs/deuda-tecnica.md) | Con qué deuda nos quedamos, cuánto cuesta no pagarla y cómo se paga |
+| [Uso de IA](docs/uso-ia.md) | Declaración del uso de la IA en cada entrega y postura del equipo |
