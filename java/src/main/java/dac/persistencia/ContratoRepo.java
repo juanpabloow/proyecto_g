@@ -9,6 +9,6 @@ public interface ContratoRepo extends JpaRepository<ContratoJpa, Long> {
 
     Optional<ContratoJpa> findByNumeroContratoAndEntidad(String numeroContrato, EntidadJpa entidad);
 
-    @Query("SELECT c FROM ContratoJpa c JOIN FETCH c.entidad JOIN FETCH c.contratista JOIN FETCH c.funcionario")
+    @Query("SELECT c FROM ContratoJpa c JOIN FETCH c.entidad JOIN FETCH c.contratista JOIN FETCH c.funcionario ORDER BY c.id")
     List<ContratoJpa> findAllConFetch();
 }
