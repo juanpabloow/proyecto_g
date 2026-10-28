@@ -1,7 +1,8 @@
 # Integración continua: en cada push y en cada Pull Request se levanta
 # PostgreSQL 16 con el esquema real (db/schema.sql) y se corre toda la suite
-# (dominio + punta a punta por HTTP). Si algo falla, el PR queda en rojo y
-# no se fusiona: la rama principal siempre verde.
+# (dominio, punta a punta por HTTP, seguridad y medición de los RNF).
+# Si algo falla, el PR queda en rojo y no se fusiona: la rama principal
+# siempre verde.
 name: CI
 
 on:
@@ -13,17 +14,25 @@ jobs:
   pruebas:
     runs-on: ubuntu-latest
 
+    # Credenciales de una base desechable que solo vive mientras corre este
+    # trabajo y no guarda datos reales. Las de cada computador van en .env,
+    # que Git ignora (Decisión 24).
+    env:
+      DB_USER: dac_ci
+      DB_PASSWORD: ci-desechable
+      DB_NAME: dac
+
     services:
       db:
         image: postgres:16
         env:
           POSTGRES_DB: dac
-          POSTGRES_USER: dac_user
-          POSTGRES_PASSWORD: dac_pass
+          POSTGRES_USER: dac_ci
+          POSTGRES_PASSWORD: ci-desechable
         ports:
           - 5433:5432
         options: >-
-          --health-cmd "pg_isready -U dac_user -d dac"
+          --health-cmd "pg_isready -U dac_ci -d dac"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -39,16 +48,31 @@ jobs:
 
       - name: Crear el esquema de la base
         env:
-          PGPASSWORD: dac_pass
-        run: psql -h localhost -p 5433 -U dac_user -d dac -v ON_ERROR_STOP=1 -f db/schema.sql
+          PGPASSWORD: ci-desechable
+        run: psql -h localhost -p 5433 -U dac_ci -d dac -v ON_ERROR_STOP=1 -f db/schema.sql
 
-      - name: Correr las pruebas
+      - name: Verificar que no haya secretos en el código
+        run: |
+          if grep -rn --include=*.properties --include=*.java -E "password=[^$]" java/src/main; then
+            echo "Hay una clave escrita en el código: muévela a .env (Decisión 24)"; exit 1
+          fi
+
+      - name: Correr las pruebas (dominio, punta a punta, seguridad y RNF)
         working-directory: java
         run: mvn -B test
 
-      - name: Guardar el reporte de pruebas
+      - name: Publicar la medición de los RNF
+        if: always()
+        run: |
+          if [ -f java/target/rnf/resultados.md ]; then
+            cat java/target/rnf/resultados.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Guardar el reporte de pruebas y la medición
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: reporte-pruebas
-          path: java/target/surefire-reports/
+          path: |
+            java/target/surefire-reports/
+            java/target/rnf/
