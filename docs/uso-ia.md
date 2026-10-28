@@ -1,9 +1,10 @@
 # Uso de IA en el proyecto
 
 ## Herramienta usada
-Claude (Anthropic), como apoyo para diseño, documentación, explicación
-de código y, desde la entrega de las 8 historias, implementación de
-código y pruebas (ver la declaración de esa entrega más abajo).
+Claude (Anthropic), usado desde nuestros computadores como apoyo para
+diseño, documentación, explicación de código y, desde la entrega de las
+8 historias, generación de código y pruebas (ver la declaración de esa
+entrega más abajo).
 
 ## En qué se usó
 - Redacción inicial de la visión del producto y de los documentos de
@@ -19,24 +20,36 @@ código y pruebas (ver la declaración de esa entrega más abajo).
 
 ## Declaración de esta entrega: 8 historias, interfaz y deuda técnica
 
-Herramienta: **Claude (Anthropic)**, usada por Gerson Rojo.
+Usamos **Claude (Anthropic)** como asistente, desde nuestros computadores
+y con nuestras propias cuentas. El trabajo se subió al repositorio desde
+la cuenta de GitHub de cada integrante, mediante una rama y un Pull
+Request.
 
-| Entregable | Qué hizo la IA | Qué hizo el equipo |
-|---|---|---|
-| HU-03, HU-05, HU-06 y HU-08 (código y pruebas) | Propuso e implementó el código de dominio, el servicio, los controladores y las pruebas (unitarias y de punta a punta) a partir de las historias y las reglas del repositorio | Definió las historias, sus criterios y el alcance; revisa el Pull Request y debe poder explicar cada prueba antes de fusionarlo |
-| Reglas provisionales de HU-03 y HU-05 | **Propuso** el tope de $100.000.000, la ventana de 30 días y qué diferencias de escritura ignorar | Las acepta como **provisionales** y las deja como parámetros; quedan pendientes de un analista real (DT-02 en [deuda-tecnica.md](deuda-tecnica.md)) |
-| Interfaz web | Diseñó y escribió el HTML, CSS y JavaScript | Revisa que muestre lo que el analista necesita (evidencia, aviso de que DAC no acusa a nadie) |
-| Integración continua | Escribió el flujo de GitHub Actions | Revisa que el PR quede en verde antes de fusionar |
-| Documentación | Redactó el borrador de las historias desarrolladas, reglas R-5/R-9/R-10, Decisiones 19 a 23 y el informe de deuda técnica | Revisa y corrige; la priorización de la deuda se discute en equipo |
+**En qué nos ayudó la IA:**
 
-**Cómo se verificó lo que hizo la IA:** las pruebas de dominio se
-ejecutaron antes de subir el código, y el Pull Request corre la suite
-completa contra PostgreSQL real en GitHub Actions. Nada se fusiona a
-`main` con la integración continua en rojo.
+- Generar el código de las historias que faltaban (HU-03, HU-05, HU-06 y
+  HU-08) y sus pruebas, a partir del backlog, las reglas de negocio y las
+  decisiones que ya teníamos en el repositorio.
+- Proponer los valores iniciales del fraccionamiento (tope de
+  $100.000.000 y ventana de 30 días) y qué diferencias de escritura
+  ignorar al comparar nombres.
+- Construir la interfaz web (HTML, CSS y JavaScript) y el flujo de
+  integración continua.
+- Redactar el primer borrador de la documentación de esta entrega:
+  historias desarrolladas, reglas R-5, R-9 y R-10, Decisiones 19 a 23 e
+  informe de deuda técnica.
 
-**Sobre los commits:** se suben desde la cuenta de GitHub de Gerson Rojo,
-que es el responsable de la entrega. Que el código lo haya generado la
-IA queda declarado aquí, no en cada commit.
+**Lo que hicimos nosotros:**
+
+- Definimos las 8 historias, su prioridad y el alcance desde las semanas
+  2 y 3; la IA trabajó sobre ese backlog.
+- Decidimos dejar las reglas de HU-03 y HU-05 como **provisionales** y
+  configurables, porque no las ha validado un analista real (DT-02 en
+  [deuda-tecnica.md](deuda-tecnica.md)).
+- Revisamos el código, las pruebas y los documentos en el Pull Request
+  antes de fusionarlo, y corregimos lo que no correspondía.
+- Verificamos que la suite completa (63 pruebas) pase en GitHub Actions
+  contra PostgreSQL real. Nada se fusiona a `main` con el CI en rojo.
 
 ## Qué no se hizo con IA
 - Las decisiones de alcance (qué señal cubrir primero, qué queda fuera
