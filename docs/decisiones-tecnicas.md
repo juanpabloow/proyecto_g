@@ -54,4 +54,14 @@ Decisión 12 es una **excepción explícita**, y conviene que se note:
   una fila incompleta debe invalidar el archivo, la decisión cambia y el
   código detrás también.
 
+## Decisiones de la segunda mitad del backlog
+
+| # | Decisión | Alternativa descartada | Por qué |
+|---|---|---|---|
+| 19 | **HU-05:** los nombres se comparan normalizados ignorando mayúsculas, espacios sobrantes, tildes, puntos y comas; se conserva la ñ y **no** se quitan sufijos ni se usan alias. Es **provisional** (excepción a la Decisión 11, como la 12) | Mantener la comparación exacta (Decisión 9); o normalizar también sufijos societarios y alias | La comparación exacta era la limitación más grande del MVP: escondía reincidencias reales. Se eligió el conjunto más conservador: solo diferencias que no cambian la identidad. Quitar sufijos uniría "ACME SAS" con "ACME LTDA", que pueden ser empresas distintas (S-6). Revierte parcialmente la Decisión 9. Pendiente de S-1 |
+| 20 | **HU-03:** fraccionamiento = mismo contratista y entidad, 2+ contratos bajo el tope, en una ventana de **30 días**, que suman el tope de **$100.000.000**. Tope y ventana son parámetros en `application.properties`. Es **provisional** | Esperar a S-1 para implementarla; o fijar los valores en el código | La historia estaba bloqueada por las mismas preguntas que la HU-04. Con parámetros, validarla con un analista es cambiar dos líneas de configuración, no el código. Las alertas de fraccionamiento se calculan al consultar y **no se guardan** (ver deuda DT-01), para no cambiar el modelo físico revisado en esta entrega |
+| 21 | **Interfaz web** en HTML, CSS y JavaScript sin librerías, servida por el mismo Spring Boot (`src/main/resources/static`) | React/Angular en un proyecto aparte; o seguir solo con `curl` | Un solo comando levanta todo, no hay servidor de Node ni compilación de frontend, y el equipo puede leer el código completo. Usa la misma API que las pruebas, así que la interfaz no tiene lógica de negocio propia |
+| 22 | **Integración continua** con GitHub Actions: cada push y cada Pull Request levanta PostgreSQL 16 con `db/schema.sql` y corre `mvn test` | Seguir corriendo las pruebas a mano (pendiente 1 del mapa) | La regla del curso es "rama principal siempre verde". Sin CI dependía de que alguien se acordara de correr las pruebas antes de fusionar |
+| 23 | El error de carga responde **400 con `{"error": "..."}`** en vez de un 400 sin cuerpo | Mantener el 400 vacío | La pantalla necesita decirle al analista *qué* columna falta; antes solo podía decir "error" |
+
 Nuevas decisiones se van agregando aquí a medida que el equipo avanza.

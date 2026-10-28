@@ -27,7 +27,8 @@ por la tabla de la sección 1.
 | Quién hizo qué en el equipo | [docs/Equipo/](Equipo/) |
 | Cómo se usó IA y cuál es la postura del equipo | [docs/uso-ia.md](uso-ia.md) |
 | Cómo ejecutar el proyecto y las pruebas | [README.md](../README.md) y §5 de este documento |
-| Lo que falta y en qué orden | §6 de este documento |
+| Lo que falta y en qué orden | §6 de este documento y [docs/deuda-tecnica.md](deuda-tecnica.md) |
+| La interfaz web | `java/src/main/resources/static/` — se abre en http://localhost:8080 |
 
 ## 2. Estructura del repositorio
 
@@ -57,11 +58,20 @@ proyecto_g/
 │       ├── CargadorDeContratosTest.java    HU-01 + problema duro (10 pruebas)
 │       ├── DetectorDeReincidenciasTest.java  HU-02, un caso por criterio (8 pruebas)
 │       ├── FilasIncompletasTest.java       HU-04 / R-6 (7 pruebas)
-│       └── ContratoE2ETest.java            De punta a punta por HTTP real (3 pruebas)
+│       ├── NombresVariantesTest.java       HU-05 (6 pruebas)
+│       ├── ConflictosDeDuplicadosTest.java HU-06 (4 pruebas)
+│       ├── DetectorDeFraccionamientoTest.java HU-03 (9 pruebas)
+│       ├── ExportadorDeAlertasTest.java    HU-08 (6 pruebas)
+│       ├── ContratoE2ETest.java            De punta a punta por HTTP real (3 pruebas)
+│       ├── RestriccionesDeBaseDeDatosTest.java  Restricciones de la base (2 pruebas)
+│       └── AlertasE2ETest.java             HU-03/05/06/08 e interfaz, por HTTP real (8 pruebas)
+│   └── src/main/resources/static/  Interfaz web: index.html, css/, js/ (Decisión 21)
 │
 ├── data/
 │   ├── contratos_ejemplo.csv    5 contratos ficticios: el flujo feliz
 │   ├── contratos_incompletos_ejemplo.csv   Filas incompletas: demostración de HU-04
+│   ├── contratos_nombres_variantes_ejemplo.csv  Mismo par escrito distinto: HU-05
+│   ├── contratos_fraccionamiento_ejemplo.csv    Contratos fraccionados: HU-03
 │   └── privado/                 Datos reales — ignorado por Git
 │
 └── docs/
@@ -72,7 +82,8 @@ proyecto_g/
     ├── reglas-de-negocio.md     Lógica de negocio explícita + glosario
     ├── diagrama-dominio.md      Diagrama de clases (Mermaid) + decisiones de modelado
     ├── esquema-bd.md            Modelo entidad–relación (Mermaid) + restricciones
-    ├── decisiones-tecnicas.md   18 decisiones con su alternativa descartada
+    ├── decisiones-tecnicas.md   23 decisiones con su alternativa descartada
+    ├── deuda-tecnica.md         13 deudas priorizadas, su costo y cómo pagarlas
     ├── modulo-java-hu04.md      Qué entrega HU-04, cómo ejecutarlo y demostrarlo
     ├── mapa-del-proyecto.md     Este documento
     ├── uso-ia.md                Uso de IA y postura del equipo
@@ -128,11 +139,15 @@ contrato de la prueba única y trazabilidad a los insumos— está en
 | [Problema duro](problema-duro.md) Idempotencia | R-2, R-6 | `dominio/CargadorDeContratos.java`, `db/schema.sql` | `CargadorDeContratosTest` (5) + `e2e_carga_persiste_y_es_idempotente` |
 | [HU-04](historias-usuario.md#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) Filas incompletas | R-6 | `dominio/CargadorDeContratos.java` | `FilasIncompletasTest` (7) + `carga_filas_incompletas_sin_invalidar_el_archivo` |
 | [HU-07](historias-usuario.md#hu-07--conservar-los-contratos-entre-ejecuciones) Idempotencia entre ejecuciones | R-2 | `aplicacion/ContratoServicio.java`, `uq_contrato_clave_natural` | `e2e_carga_persiste_y_es_idempotente` |
-| HU-03, HU-05, HU-06, HU-08 | R-5, R-8 | — (pendientes) | — |
+| [HU-05](historias-usuario.md#hu-05--reconocer-el-mismo-nombre-escrito-de-formas-distintas) Nombres escritos distinto | R-5 | `dominio/NormalizadorDeNombres.java` | `NombresVariantesTest` (6) + `AlertasE2ETest` |
+| [HU-06](historias-usuario.md#hu-06--saber-cuándo-un-duplicado-traía-datos-distintos) Conflictos de duplicados | R-2 | `dominio/CargadorDeContratos.java`, `aplicacion/ContratoServicio.java` | `ConflictosDeDuplicadosTest` (4) + `AlertasE2ETest` |
+| [HU-03](historias-usuario.md#hu-03--detectar-fraccionamiento-de-contratos) Fraccionamiento | R-9, R-8 | `dominio/DetectorDeFraccionamiento.java` | `DetectorDeFraccionamientoTest` (9) + `AlertasE2ETest` |
+| [HU-08](historias-usuario.md#hu-08--exportar-el-reporte-de-alertas) Exportar reporte | R-10 | `dominio/ExportadorDeAlertas.java`, `api/AlertaControlador.java` | `ExportadorDeAlertasTest` (6) + `AlertasE2ETest` |
 
-**28 pruebas, todas pasando:** 25 de dominio (rápidas, sin base de datos)
-y 3 de punta a punta por HTTP real contra PostgreSQL. Cada criterio de
-aceptación automatizable de HU-01, HU-02, HU-04 y HU-07 tiene su prueba;
+**63 pruebas:** 50 de dominio (rápidas, sin base de datos) y 13 de
+punta a punta por HTTP real contra PostgreSQL, que corren en GitHub
+Actions en cada Pull Request. Cada criterio de aceptación automatizable
+de las 8 historias tiene su prueba;
 ninguna historia se declaró "hecha" sin ella.
 
 Los nombres de las pruebas **son** los criterios de aceptación: al correr
@@ -142,7 +157,7 @@ Los nombres de las pruebas **son** los criterios de aceptación: al correr
 
 ```bash
 docker compose up -d             # PostgreSQL 16 en localhost:5433 + Adminer en localhost:8081
-cd java && mvn test              # las 28 pruebas
+cd java && mvn test              # las 63 pruebas
 java/ejecutar.sh                 # levanta el endpoint en localhost:8080
 ```
 
@@ -159,8 +174,8 @@ contratos como evidencia (uno en la alcaldía y dos en la gobernación: la
 señal cruza entidades, R-3). Repetir el mismo `curl` vuelve a dar
 `contratosNuevos: 0`: eso es HU-07.
 
-Salida esperada de `mvn test`: `Tests run: 28, Failures: 0, Errors: 0`.
-Las 3 de punta a punta requieren el contenedor arriba; las otras 25 no
+Salida esperada de `mvn test`: `Tests run: 63, Failures: 0, Errors: 0`.
+Las 13 de punta a punta requieren el contenedor arriba; las otras 50 no
 tocan la base.
 
 ## 6. Estado y pendientes
@@ -172,29 +187,22 @@ fronteras técnicas con su prueba de punta a punta, y la documentación de
 visión, stakeholders, problema duro, reglas de negocio, backlog,
 decisiones y trazabilidad de la rebanada.
 
-**Pendiente, en orden de prioridad:**
+**Terminado en la entrega de las 8 historias:** HU-03 (fraccionamiento),
+HU-05 (nombres escritos distinto), HU-06 (conflictos de duplicados),
+HU-08 (exportar reporte), interfaz web e integración continua.
 
-| # | Pendiente | Tipo | Referencia |
-|---|---|---|---|
-| 1 | No hay canalización de CI/CD: la rebanada solo se verifica a mano | Alcance | [rebanada §4](../esqueleto/rebanada.md) |
-| 2 | Confirmar con S-1 la política de filas incompletas (hoy: descartar y reportar, decidido por el equipo) | Decisión provisional | [Decisión 12](decisiones-tecnicas.md), [HU-04](historias-usuario.md) |
-| 3 | Validar con un analista real el umbral de reincidencia (¿2 veces? ¿ventana de tiempo?) | Supuesto sin validar | [R-3](reglas-de-negocio.md) |
-| 4 | Nombres escritos distinto no se reconocen → falsos negativos | Limitación | [R-5](reglas-de-negocio.md), [HU-05](historias-usuario.md) |
-| 5 | Ninguna prueba corre contra el JAR empaquetado | Alcance | [rebanada §4](../esqueleto/rebanada.md) |
-| 6 | Carga concurrente del mismo archivo: no está ejercitada | Limitación | [rebanada §4](../esqueleto/rebanada.md) |
-| 7 | Un duplicado con datos distintos se pierde en silencio | Limitación | [HU-06](historias-usuario.md) |
-| 8 | `monto` y `fecha` se manejan como texto | Deuda técnica | [R-8](reglas-de-negocio.md) |
-| 9 | Fraccionamiento, tablero visual, SECOP, concurrencia | Trabajo futuro | [Visión §6](vision-producto.md) |
-
-Los pendientes 3 y 4 son los que más afectan la confianza del analista:
-el primero puede producir alertas falsas y el segundo puede ocultar
-reincidencias reales.
+**Pendiente:** la deuda que queda, priorizada y con su costo, está en
+[deuda-tecnica.md](deuda-tecnica.md). Las tres primeras son las que más
+afectan la confianza del analista o la seguridad: guardar las alertas de
+fraccionamiento (DT-01), validar las reglas provisionales con un analista
+real (DT-02, incluye las Decisiones 12, 19 y 20) y agregar inicio de
+sesión antes de usar datos reales (DT-03).
 
 ## 7. Quién mantiene qué
 
 | Área | Responsable | Archivos |
 |---|---|---|
-| Requisitos, backlog y reglas de negocio | Gerson Rojo — [ficha](Equipo/gerson_rojo.md) | `docs/historias-usuario.md`, `docs/reglas-de-negocio.md`, `docs/vision-producto.md`, `docs/stakeholders.md` |
+| Requisitos, backlog y reglas de negocio | Gerson Rojo — [ficha](Equipo/gerson_rojo.md) | `docs/historias-usuario.md`, `docs/reglas-de-negocio.md`, `docs/vision-producto.md`, `docs/stakeholders.md`, `docs/deuda-tecnica.md` |
 | Carga de datos y detección de alertas | Juan Pablo Cardozo — [ficha](Equipo/juan-pablo-cardozo-rivera.md) | `java/src/main/` |
 | Plan de pruebas y verificación de criterios | Yerson Pérez — [ficha](Equipo/yerson_cadena.md) | `java/src/test/` |
 | Decisiones y documentación de proceso | Equipo | `docs/decisiones-tecnicas.md`, `docs/uso-ia.md` |

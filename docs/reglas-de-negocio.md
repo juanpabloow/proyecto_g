@@ -16,12 +16,12 @@ Cada regla dice **[Implementada]**, **[Parcial]** o **[Pendiente]**.
 | **Contratista** | Persona o empresa que recibe el contrato |
 | **Funcionario** | Servidor público que aparece asociado a la adjudicación del contrato |
 | **Clave natural** | El par de campos que identifica un contrato de forma única: `numero_contrato` + `entidad` |
-| **Señal de alerta** | Regla que marca un patrón sospechoso. El MVP tiene una: reincidencia |
+| **Señal de alerta** | Regla que marca un patrón sospechoso. Hay dos: reincidencia (R-3) y fraccionamiento (R-9) |
 | **Reincidencia** | El mismo contratista aparece con el mismo funcionario en más de un contrato |
 | **Alerta** | Resultado de una señal: el par señalado **más** los contratos que la originaron |
 | **Evidencia** | La lista de contratos dentro de una alerta. Sin evidencia no hay alerta |
 | **Idempotencia** | Cargar el mismo contrato dos veces produce el mismo resultado que cargarlo una vez |
-| **Fraccionamiento** | Partir un contrato grande en varios pequeños para evitar un proceso de mayor cuantía (señal futura) |
+| **Fraccionamiento** | Partir un contrato grande en varios pequeños para evitar un proceso de mayor cuantía (segunda señal, R-9) |
 
 ## R-1 — Un contrato válido tiene seis campos **[Implementada]**
 
@@ -76,18 +76,24 @@ personas. Solo dice *"este par se repite, aquí están los contratos"*. La
 interpretación es del analista. Ver [visión §4](vision-producto.md) y
 el stakeholder S-6 en [stakeholders.md](stakeholders.md).
 
-## R-5 — La comparación de nombres es **exacta** **[Parcial — limitación conocida]**
+## R-5 — Los nombres se comparan normalizados **[Implementada — regla provisional]**
 
-Hoy `"ACME SAS"`, `"acme sas"` y `"ACME S.A.S."` son tres contratistas
-distintos para el sistema, y `" Juan Pérez"` con espacio inicial es otro
-funcionario. Comportamiento verificado: un CSV con las mismas dos
-personas escritas en minúscula **no** genera alerta.
+Para la señal, `"ACME SAS"`, `"acme sas"`, `"ACME S.A.S."` y `" acme  sas "`
+son el mismo contratista, y `"Juan Pérez"` y `"juan perez"` el mismo
+funcionario. Se ignoran: mayúsculas, espacios sobrantes, tildes, puntos y
+comas.
 
-- **Riesgo:** falsos negativos. Es la limitación más grande del MVP.
-- **Por qué no se resolvió:** normalizar (mayúsculas, tildes, sufijos
-  societarios, alias) son reglas de negocio que necesitan validación con
-  un analista; inventarlas sería peor que dejar la limitación visible.
-- **Trabajo futuro:** [HU-05](historias-usuario.md).
+**No** se ignoran: la ñ (`"Peña"` ≠ `"Pena"`), los sufijos societarios
+(`"ACME SAS"` ≠ `"ACME LTDA"`) ni los alias. Unir de más señala a quien
+no es (S-6).
+
+- La normalización solo sirve para **comparar**. En la base y en pantalla
+  queda el nombre tal como venía en el archivo (criterio 2 de HU-05).
+- **Provisional:** las reglas las propuso el equipo ([Decisión 19](decisiones-tecnicas.md));
+  falta validarlas con S-1. Antes de HU-05 esta regla era "comparación
+  exacta" y era la limitación más grande del MVP.
+- Código: `java/src/main/java/dac/dominio/NormalizadorDeNombres.java`
+- Pruebas: `NombresVariantesTest` (6 casos)
 
 ## R-6 — Filas incompletas: se descartan y se reportan **[Implementada]**
 
@@ -138,8 +144,43 @@ datos).
 
 En el MVP se leen del CSV como cadenas y solo se muestran; no se suman,
 no se comparan ni se validan. Alcanza para la señal de reincidencia
-(R-3, que no usa monto ni fecha), pero **no** alcanzará para
-fraccionamiento ([HU-03](historias-usuario.md)), que necesita sumar
-montos y comparar fechas dentro de una ventana.
+(R-3, que no usa monto ni fecha). El fraccionamiento (R-9) sí los
+necesita: el detector los convierte a número y fecha al evaluar, y deja
+fuera los que no se pueden convertir. Al guardar en la base, un monto o
+una fecha mal escritos rechazan el archivo con un mensaje claro.
 
-- **Trabajo futuro:** convertir y validar tipos al cargar.
+- **Deuda:** el dominio sigue guardándolos como texto ([deuda-tecnica.md](deuda-tecnica.md), DT-07).
+
+## R-9 — Fraccionamiento: contratos pequeños que juntos superan el tope **[Implementada — regla provisional]**
+
+Se agrupan los contratos por **contratista** (normalizado, R-5) y
+**entidad**. Hay alerta cuando 2 o más contratos del grupo:
+
+- cada uno está **por debajo** del tope de cuantía,
+- sus fechas caben en una **ventana de días**, y
+- su **suma alcanza o supera** el tope.
+
+Valores actuales: tope **$100.000.000**, ventana **30 días**
+(`application.properties`). Los contratos sin monto o sin fecha no
+participan. Una misma evidencia no se reporta en dos alertas.
+
+> ⚠️ **Supuesto sin validar.** El tope real de mínima/menor cuantía
+> depende del presupuesto de cada entidad, y la ventana la propuso el
+> equipo. Primera pregunta para S-1: *¿qué tope y qué ventana usan en la
+> práctica?* ([Decisión 20](decisiones-tecnicas.md)).
+
+- Código: `java/src/main/java/dac/dominio/DetectorDeFraccionamiento.java`
+- Pruebas: `DetectorDeFraccionamientoTest` (9 casos)
+- Historia: [HU-03](historias-usuario.md)
+
+## R-10 — El reporte exportado no ejecuta fórmulas **[Implementada]**
+
+Los nombres vienen de archivos externos y no son confiables. Al exportar
+(HU-08), una celda que empieza por `=`, `+`, `-` o `@` se escribe con un
+apóstrofo delante para que Excel la muestre como texto (inyección de
+fórmulas en CSV). En la pantalla web, los datos se insertan como texto,
+nunca como HTML.
+
+- Código: `ExportadorDeAlertas.celda()` y `static/js/app.js`
+- Prueba: `ExportadorDeAlertasTest` → *una celda que parece fórmula se neutraliza*
+
