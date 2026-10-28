@@ -1,7 +1,7 @@
 // Interfaz web de DAC. Sin librerías: habla con la misma API REST que usan
 // las pruebas (POST /api/contratos/cargar, GET /api/alertas).
 // Seguridad: todo dato que viene del CSV se inserta con textContent, nunca
-// con innerHTML, para que un nombre como <script> no se ejecute.
+// como HTML, para que un nombre como <script> no se ejecute (S-04).
 (function () {
   "use strict";
 
