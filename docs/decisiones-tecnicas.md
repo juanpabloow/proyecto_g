@@ -72,5 +72,6 @@ Decisión 12 es una **excepción explícita**, y conviene que se note:
 | 25 | La carga **lee lo existente una sola vez** y trabaja con índices en memoria | Seguir consultando por cada fila; o escribir la detección en SQL | Con 5.000 filas, las consultas por fila hacían que Hibernate revisara todo lo cargado en cada consulta. La lectura única cumple el RNF-1 sin cambiar el modelo; la detección en SQL queda para cuando el volumen lo exija (DT-06) |
 | 26 | Los **RNF se miden en el CI** con datos ficticios de semilla fija | Medir una vez a mano en un computador del equipo | Una cifra sin método no sirve: en el CI el método, los datos y la máquina son siempre los mismos y la medición se repite en cada cambio |
 | 27 | El registro de auditoría guarda **cantidades, no nombres** | Registrar el contenido de cada carga | El log sería otra copia de datos sensibles (S-8) |
+| 28 | El release candidate se etiqueta **`v0.3.0-rc1`** | `v0.4.0-rc1` | El curso llama a la entrega de la semana 14 *Release 0.3* (MVP funcional completo); usar el mismo número evita confusión al revisar |
 
 Nuevas decisiones se van agregando aquí a medida que el equipo avanza.

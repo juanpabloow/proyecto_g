@@ -68,6 +68,9 @@ trabajo se subió desde la cuenta de GitHub de Gerson Rojo en la rama
    respetando las reglas del curso (rama, Pull Request, pruebas en CI).
 3. Le pedimos que todo quedara acorde al proyecto y que la declaración de
    IA dijera las instrucciones que le dimos y qué se aceptó o no.
+4. Le pasamos las infografías de las semanas 13 y 14, le pedimos revisar
+   el trabajo contra ellas y completar lo que faltara (evidencias por
+   semana, gráficas de los RNF y la versión del release).
 
 **Registro de sugerencias de la IA:**
 
@@ -78,6 +81,10 @@ trabajo se subió desde la cuenta de GitHub de Gerson Rojo en la rama
 | Leer la clave de la base de un archivo `.env` | **Aceptada** (Decisión 24) |
 | Cabeceras de seguridad, validación en la frontera, errores sin detalles y registro de auditoría sin nombres | **Aceptadas** |
 | Cambiar la carga para no consultar la base fila por fila | **Aceptada** (Decisión 25) |
+| Etiquetar el release candidate como `v0.4.0-rc1` | **Modificada:** el curso llama a esta entrega *Release 0.3*, así que la etiqueta es `v0.3.0-rc1` (Decisión 28) |
+| Escribir la prueba automática de cargas simultáneas (DT-09) | **Modificada:** la escribe Yerson Pérez (QA) en su propio Pull Request, con una guía paso a paso, para que la prueba sea suya |
+| Mover toda la evidencia de seguridad a `docs/seguridad/` | **Modificada:** el documento principal sigue en `docs/seguridad-y-rnf.md` (lo pide la ruta del módulo) y en `docs/seguridad/` quedan los resúmenes por semana que piden las infografías |
+| Primer borrador de esta declaración | **Modificada:** la reescribimos para decir con nuestras palabras desde dónde se hizo el trabajo, qué instrucciones dimos y qué decidimos nosotros |
 | Agregar inicio de sesión y roles | **No se aplica en este alcance**: queda como deuda DT-03, condición para usar datos reales |
 | Agregar la revisión automática de dependencias (OWASP Dependency-Check) al CI | **No se aplica**: alarga mucho cada ejecución del CI; queda como deuda DT-15 |
 | Desplegar el release candidate en un servicio gratuito (nivel avanzado, opcional) | **No se aplica**: sin inicio de sesión ni HTTPS no es seguro publicarlo |

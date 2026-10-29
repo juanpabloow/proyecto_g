@@ -88,9 +88,10 @@ proyecto_g/
     ├── reglas-de-negocio.md     Lógica de negocio explícita + glosario
     ├── diagrama-dominio.md      Diagrama de clases (Mermaid) + decisiones de modelado
     ├── esquema-bd.md            Modelo entidad–relación (Mermaid) + restricciones
-    ├── decisiones-tecnicas.md   27 decisiones con su alternativa descartada
+    ├── decisiones-tecnicas.md   28 decisiones con su alternativa descartada
     ├── deuda-tecnica.md         Deudas priorizadas, su costo y cómo pagarlas
     ├── seguridad-y-rnf.md       Checklist de seguridad, amenazas y los 2 RNF medidos (Módulo 7)
+    ├── seguridad/               Evidencias por semana (13 y 14) y gráficas de los RNF
     ├── modulo-java-hu04.md      Qué entrega HU-04, cómo ejecutarlo y demostrarlo
     ├── mapa-del-proyecto.md     Este documento
     ├── uso-ia.md                Uso de IA y postura del equipo
