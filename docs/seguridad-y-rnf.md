@@ -86,6 +86,8 @@ todo lo cargado hasta ese momento: el tiempo crecía más que la cantidad de
 filas. Se cambió para leer lo existente **una sola vez** al empezar y
 trabajar con índices en memoria ([Decisión 25](decisiones-tecnicas.md)).
 
+![RNF-1](seguridad/rnf-1-rendimiento.svg)
+
 ### RNF-2 — Integridad ante recargas (idempotencia)
 
 | | |
@@ -94,6 +96,8 @@ trabajar con índices en memoria ([Decisión 25](decisiones-tecnicas.md)).
 | **Objetivo** | Después de cada recarga hay exactamente los mismos contratos, alertas y filas de evidencia que tras la primera carga: **0 duplicados en 10 de 10** |
 | **Método** | Se cuentan las filas de `contrato`, `alerta` y `alerta_contrato` después de cada recarga y se suman los contratos nuevos que informa cada respuesta |
 | **Resultado** | ✅ **Cumple.** Tras la 1.ª carga: 1.000 contratos, 4 alertas y 8 filas de evidencia. En las 10 recargas: **0 contratos nuevos** y las tres cantidades iguales en **10 de 10** |
+
+![RNF-2](seguridad/rnf-2-integridad.svg)
 
 ## 3. Deuda de seguridad declarada
 
@@ -116,5 +120,13 @@ de cada deuda está en [deuda-tecnica.md](deuda-tecnica.md).
   grandes.
 - **Alcance congelado:** no se agregan historias nuevas. Lo que queda es la
   deuda declarada arriba y en [deuda-tecnica.md](deuda-tecnica.md).
-- **Release candidate:** se etiqueta `v0.4.0-rc1` en `main` cuando se
-  fusionen el PR #5 y este PR con el CI en verde.
+- **Release candidate:** los PR #5 y #6 ya están fusionados en `main`
+  con el CI en verde; se etiqueta `v0.3.0-rc1` (Release 0.3 del curso,
+  [Decisión 28](decisiones-tecnicas.md)).
+
+## 5. Evidencias por semana
+
+- [Semana 13](seguridad/semana-13.md): checklist, ataques simulados y
+  correcciones con su commit.
+- [Semana 14](seguridad/semana-14.md): tabla de RNF con gráficas,
+  estabilización y release candidate.

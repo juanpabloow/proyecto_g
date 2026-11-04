@@ -342,5 +342,6 @@ dónde buscar algo.
 | [Decisiones técnicas](docs/decisiones-tecnicas.md) | Por qué se decidió cada cosa y qué se descartó |
 | [Equipo](docs/Equipo/) | Rol y aporte de cada integrante |
 | [Seguridad y RNF](docs/seguridad-y-rnf.md) | Checklist de seguridad aplicado, modelo de amenazas, los 2 RNF medidos y la deuda de seguridad |
+| [Evidencias por semana](docs/seguridad/) | Semana 13 (seguridad) y semana 14 (RNF con gráficas y release 0.3) |
 | [Deuda técnica](docs/deuda-tecnica.md) | Con qué deuda nos quedamos, cuánto cuesta no pagarla y cómo se paga |
 | [Uso de IA](docs/uso-ia.md) | Declaración del uso de la IA en cada entrega y postura del equipo |

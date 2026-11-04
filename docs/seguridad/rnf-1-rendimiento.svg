@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" font-family="Segoe UI,Helvetica,Arial,sans-serif">
+<rect width="720" height="360" fill="#ffffff"/>
+<text x="90" y="30" font-size="18" font-weight="bold" fill="#20302c">RNF-1 · Carga de 5.000 contratos (ms)</text>
+<text x="90" y="48" font-size="12" fill="#5b6b66">Corrida del CI del 28-oct-2026 · objetivo: 5.000 ms o menos · se toma la peor</text>
+<line x1="90" x2="690" y1="290.0" y2="290.0" stroke="#e3e6e3"/>
+<text x="82" y="294.0" font-size="12" text-anchor="end" fill="#5b6b66">0</text>
+<line x1="90" x2="690" y1="251.7" y2="251.7" stroke="#e3e6e3"/>
+<text x="82" y="255.7" font-size="12" text-anchor="end" fill="#5b6b66">1.000</text>
+<line x1="90" x2="690" y1="213.3" y2="213.3" stroke="#e3e6e3"/>
+<text x="82" y="217.3" font-size="12" text-anchor="end" fill="#5b6b66">2.000</text>
+<line x1="90" x2="690" y1="175.0" y2="175.0" stroke="#e3e6e3"/>
+<text x="82" y="179.0" font-size="12" text-anchor="end" fill="#5b6b66">3.000</text>
+<line x1="90" x2="690" y1="136.7" y2="136.7" stroke="#e3e6e3"/>
+<text x="82" y="140.7" font-size="12" text-anchor="end" fill="#5b6b66">4.000</text>
+<line x1="90" x2="690" y1="98.3" y2="98.3" stroke="#e3e6e3"/>
+<text x="82" y="102.3" font-size="12" text-anchor="end" fill="#5b6b66">5.000</text>
+<line x1="90" x2="690" y1="60.0" y2="60.0" stroke="#e3e6e3"/>
+<text x="82" y="64.0" font-size="12" text-anchor="end" fill="#5b6b66">6.000</text>
+<rect x="157.5" y="207.4" width="110" height="82.6" fill="#e9a23b" rx="3"/>
+<text x="212.5" y="199.4" font-size="14" font-weight="bold" text-anchor="middle" fill="#20302c">2.156 ms</text>
+<text x="212.5" y="310" font-size="13" text-anchor="middle" fill="#20302c">Corrida 1</text>
+<rect x="335.0" y="229.5" width="110" height="60.5" fill="#1f6b57" rx="3"/>
+<text x="390.0" y="221.5" font-size="14" font-weight="bold" text-anchor="middle" fill="#20302c">1.578 ms</text>
+<text x="390.0" y="310" font-size="13" text-anchor="middle" fill="#20302c">Corrida 2</text>
+<rect x="512.5" y="233.2" width="110" height="56.8" fill="#1f6b57" rx="3"/>
+<text x="567.5" y="225.2" font-size="14" font-weight="bold" text-anchor="middle" fill="#20302c">1.481 ms</text>
+<text x="567.5" y="310" font-size="13" text-anchor="middle" fill="#20302c">Corrida 3</text>
+<line x1="90" x2="690" y1="98.3" y2="98.3" stroke="#c4553f" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="690" y="92.3" font-size="12" text-anchor="end" fill="#c4553f">Límite del RNF: 5.000 ms</text>
+<text x="90" y="346" font-size="12" fill="#5b6b66">Peor corrida (naranja): 2.156 ms = 43 % del límite → cumple.</text>
+</svg>

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" font-family="Segoe UI,Helvetica,Arial,sans-serif">
+<rect width="720" height="360" fill="#ffffff"/>
+<text x="90" y="30" font-size="18" font-weight="bold" fill="#20302c">RNF-2 · Contratos en la base tras cada carga</text>
+<text x="90" y="48" font-size="12" fill="#5b6b66">Mismo archivo de 1.000 contratos: 1 carga inicial + 10 recargas · objetivo: 0 duplicados</text>
+<line x1="90" x2="690" y1="290.0" y2="290.0" stroke="#e3e6e3"/>
+<text x="82" y="294.0" font-size="12" text-anchor="end" fill="#5b6b66">0</text>
+<line x1="90" x2="690" y1="251.7" y2="251.7" stroke="#e3e6e3"/>
+<text x="82" y="255.7" font-size="12" text-anchor="end" fill="#5b6b66">200</text>
+<line x1="90" x2="690" y1="213.3" y2="213.3" stroke="#e3e6e3"/>
+<text x="82" y="217.3" font-size="12" text-anchor="end" fill="#5b6b66">400</text>
+<line x1="90" x2="690" y1="175.0" y2="175.0" stroke="#e3e6e3"/>
+<text x="82" y="179.0" font-size="12" text-anchor="end" fill="#5b6b66">600</text>
+<line x1="90" x2="690" y1="136.7" y2="136.7" stroke="#e3e6e3"/>
+<text x="82" y="140.7" font-size="12" text-anchor="end" fill="#5b6b66">800</text>
+<line x1="90" x2="690" y1="98.3" y2="98.3" stroke="#e3e6e3"/>
+<text x="82" y="102.3" font-size="12" text-anchor="end" fill="#5b6b66">1.000</text>
+<line x1="90" x2="690" y1="60.0" y2="60.0" stroke="#e3e6e3"/>
+<text x="82" y="64.0" font-size="12" text-anchor="end" fill="#5b6b66">1.200</text>
+<rect x="108.8" y="98.3" width="34" height="191.7" fill="#1f6b57" rx="2"/>
+<text x="125.8" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+1000</text>
+<text x="125.8" y="308" font-size="12" text-anchor="middle" fill="#20302c">1.ª</text>
+<rect x="161.7" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="178.7" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="178.7" y="308" font-size="12" text-anchor="middle" fill="#20302c">R1</text>
+<rect x="214.5" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="231.5" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="231.5" y="308" font-size="12" text-anchor="middle" fill="#20302c">R2</text>
+<rect x="267.3" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="284.3" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="284.3" y="308" font-size="12" text-anchor="middle" fill="#20302c">R3</text>
+<rect x="320.2" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="337.2" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="337.2" y="308" font-size="12" text-anchor="middle" fill="#20302c">R4</text>
+<rect x="373.0" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="390.0" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="390.0" y="308" font-size="12" text-anchor="middle" fill="#20302c">R5</text>
+<rect x="425.8" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="442.8" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="442.8" y="308" font-size="12" text-anchor="middle" fill="#20302c">R6</text>
+<rect x="478.7" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="495.7" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="495.7" y="308" font-size="12" text-anchor="middle" fill="#20302c">R7</text>
+<rect x="531.5" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="548.5" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="548.5" y="308" font-size="12" text-anchor="middle" fill="#20302c">R8</text>
+<rect x="584.3" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="601.3" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="601.3" y="308" font-size="12" text-anchor="middle" fill="#20302c">R9</text>
+<rect x="637.2" y="98.3" width="34" height="191.7" fill="#7fb3a3" rx="2"/>
+<text x="654.2" y="90.3" font-size="11" text-anchor="middle" fill="#20302c">+0</text>
+<text x="654.2" y="308" font-size="12" text-anchor="middle" fill="#20302c">R10</text>
+<text x="90" y="332" font-size="12" fill="#5b6b66">Cada barra = 1.000 contratos; arriba, los nuevos de esa carga.</text>
+<text x="90" y="350" font-size="12" fill="#5b6b66">En R1–R10: 0 nuevos, y siempre 4 alertas y 8 filas de evidencia → cumple 10/10.</text>
+</svg>
