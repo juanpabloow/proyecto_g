@@ -15,10 +15,15 @@
         <h1>Detector de Alertas de Contratación</h1>
         <p class="encabezado__sub">Señales de posible soborno o extorsión en la contratación pública, cada una con la evidencia que la originó.</p>
       </div>
-      <a class="boton boton--claro" id="btn-exportar" href="api/alertas/exportar" download>
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>
-        Exportar reporte (CSV)
-      </a>
+      <div class="encabezado__acciones">
+        <a class="boton boton--claro" id="btn-exportar" href="api/alertas/exportar" download>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>
+          Exportar reporte (CSV)
+        </a>
+        <form method="post" action="logout" class="salir-form">
+          <button type="submit" class="boton boton--claro">Salir</button>
+        </form>
+      </div>
     </div>
   </header>
 

@@ -34,6 +34,13 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!-- Seguridad: inicio de sesión del analista (S-10). Un solo usuario,
+             tomado de variables de entorno, con la clave guardada como hash. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- Driver PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>

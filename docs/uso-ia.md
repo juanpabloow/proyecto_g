@@ -111,11 +111,34 @@ Esta entrega responde al checklist de clase del 28 de octubre de 2026.
 
 **Lo que decidimos nosotros:**
 
-- **No** agregar inicio de sesión: sigue como deuda **DT-03**. La IA lo marcó
-  como el único ítem del checklist que contradice una decisión ya documentada
-  y recomendó no tocarlo sin acordarlo con el equipo. Igual **DT-15** (escaneo
-  automático de dependencias), que se queda como deuda por el tiempo de CI.
+- Al principio **no** agregamos inicio de sesión (la IA lo marcó como el único
+  ítem que contradecía una decisión ya documentada, DT-03); tras revisarlo
+  **decidimos agregarlo** en esta misma entrega (ver la declaración siguiente).
+  **DT-15** (escaneo automático de dependencias) sí se queda como deuda por el
+  tiempo de CI.
 - Pedimos expresamente subir estos cambios a `main`.
+
+## Declaración de esta entrega: inicio de sesión (login básico)
+
+Usamos **Claude (Anthropic)**. Al ver que el checklist pedía "Login y
+contraseñas", pedimos agregar un inicio de sesión básico.
+
+**En qué nos ayudó la IA:**
+
+- Spring Security con un solo usuario tomado del entorno y la clave guardada
+  como **hash BCrypt**; formulario de login para el navegador y HTTP Basic
+  para clientes y pruebas.
+- Pantalla de login y botón de salir, respetando la CSP (sin scripts ni
+  estilos en línea).
+- Actualizar las pruebas E2E para que se autentiquen y una prueba nueva de que
+  sin credenciales la API responde 401.
+- Documentar la nueva deuda **DT-16** (CSRF desactivado en este alcance) y
+  bajar DT-03 a "faltan roles".
+
+**Lo que decidimos nosotros:**
+
+- Hacerlo en una rama aparte con Pull Request (no directo a `main`) por el
+  tamaño del cambio, y mantener los **roles** como deuda DT-03.
 
 **Verificación:** 56 pruebas de dominio en verde, arranque de la app con los
 endpoints de Actuator comprobados, k6 con 0 % de errores, y el CI de GitHub

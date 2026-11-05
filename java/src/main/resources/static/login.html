@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DAC — Iniciar sesión</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Crect%20width='16'%20height='16'%20rx='3'%20fill='%231f6b57'/%3E%3Crect%20x='7'%20y='3.5'%20width='2'%20height='6'%20rx='1'%20fill='white'/%3E%3Crect%20x='7'%20y='11'%20width='2'%20height='2'%20rx='1'%20fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="login-body">
+  <main class="login-caja" aria-labelledby="login-titulo">
+    <p class="etiqueta">DAC</p>
+    <h1 id="login-titulo" class="login-titulo">Detector de Alertas de Contratación</h1>
+    <p class="login-sub">Entra con tu usuario de analista para ver las alertas.</p>
+    <p class="estado" id="login-mensaje" role="status" aria-live="polite" hidden></p>
+    <form method="post" action="login" class="login-form">
+      <label class="login-campo">
+        <span>Usuario</span>
+        <input type="text" name="username" autocomplete="username" required autofocus>
+      </label>
+      <label class="login-campo">
+        <span>Contraseña</span>
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="boton">Entrar</button>
+    </form>
+  </main>
+  <script src="js/login.js"></script>
+</body>
+</html>
