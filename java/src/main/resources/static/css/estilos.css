@@ -103,6 +103,38 @@ tr:last-child td { border-bottom: 0; }
 
 .pie { color: var(--texto-suave); font-size: .85rem; padding-bottom: 28px; }
 
+/* Ayuda breve bajo la carga */
+.ayuda--mini { margin: 10px 0 0; font-size: .85rem; }
+
+/* Buscador (filtra las alertas) */
+.buscador { margin: 0 0 14px; }
+.buscador__etiqueta { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 6px; color: var(--verde-oscuro); }
+.buscador__campo { display: flex; align-items: center; gap: 8px; border: 1px solid var(--borde); border-radius: 10px;
+  padding: 0 12px; background: #fff; max-width: 460px; transition: border-color .15s, box-shadow .15s; }
+.buscador__campo:focus-within { border-color: var(--verde); box-shadow: 0 0 0 3px var(--verde-suave); }
+.buscador__campo svg { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--texto-suave);
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.buscador__campo input { flex: 1; border: 0; outline: none; background: transparent; font: inherit; color: var(--texto); padding: 10px 0; }
+.buscador__ayuda { margin: 6px 0 0; color: var(--texto-suave); font-size: .85rem; }
+
+/* Historial de cargas de la sesión (HU-07) */
+.historial-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.historial__item { border: 1px solid var(--borde); border-radius: 10px; padding: 12px 16px; background: #fbfcfc;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.historial__archivo { font-weight: 600; color: var(--verde-oscuro); word-break: break-word; }
+.historial__hora { color: var(--texto-suave); font-size: .82rem; }
+.historial__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.chip { font-size: .78rem; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+  background: var(--verde-suave); color: var(--verde-oscuro); white-space: nowrap; }
+.chip--nuevos { background: var(--verde); color: #fff; }
+.chip--cero { background: var(--verde-suave); color: var(--texto-suave); }
+.chip--aviso { background: #f3d9d2; color: #8a3524; }
+
+/* HU-05: nombre tal como vino en el archivo */
+td.variante { color: #8a3524; font-weight: 600; }
+td.variante::after { content: " ✎"; font-size: .8em; color: var(--naranja); }
+.nota-variantes { margin: 8px 0 0; color: var(--texto-suave); font-size: .82rem; }
+
 @media (max-width: 720px) {
   .metricas { grid-template-columns: repeat(2, 1fr); }
   .tarjeta { padding: 18px 16px; }
@@ -112,4 +144,6 @@ tr:last-child td { border-bottom: 0; }
   table { font-size: .82rem; }
   th { font-size: .7rem; letter-spacing: 0; }
   .alerta { padding: 14px 12px; }
+  .buscador__campo { max-width: none; }
+  .historial__chips { margin-left: 0; width: 100%; }
 }

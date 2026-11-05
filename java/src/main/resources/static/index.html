@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DAC — Detector de Alertas de Contratación</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Crect%20width='16'%20height='16'%20rx='3'%20fill='%231f6b57'/%3E%3Crect%20x='7'%20y='3.5'%20width='2'%20height='6'%20rx='1'%20fill='white'/%3E%3Crect%20x='7'%20y='11'%20width='2'%20height='2'%20rx='1'%20fill='white'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
@@ -38,7 +39,14 @@
         </label>
         <button type="submit" class="boton" id="btn-cargar" disabled>Analizar archivo</button>
       </form>
+      <p class="ayuda ayuda--mini">Se revisa en el navegador que sea un <code>.csv</code>, que no esté vacío y que no supere 10 MB antes de enviarlo.</p>
       <p class="estado" id="estado" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="tarjeta historial" id="seccion-historial" aria-labelledby="titulo-historial" hidden>
+      <h2 id="titulo-historial">Cargas de esta sesión</h2>
+      <p class="ayuda">Cada archivo analizado queda aquí con su resumen. Volver a cargar el mismo archivo da <strong>0 nuevos</strong>: lo que ya está guardado no se repite (HU-07).</p>
+      <ol class="historial-lista" id="historial-lista" aria-live="polite"></ol>
     </section>
 
     <section class="metricas" aria-label="Resumen">
@@ -50,6 +58,14 @@
 
     <section class="tarjeta" aria-labelledby="titulo-resultados">
       <h2 id="titulo-resultados" class="oculto">Resultados</h2>
+      <div class="buscador">
+        <label class="buscador__etiqueta" for="buscador">Buscar alertas</label>
+        <div class="buscador__campo">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="buscador" autocomplete="off" placeholder="Contratista, funcionario o entidad…" aria-describedby="buscador-ayuda">
+        </div>
+        <p class="buscador__ayuda" id="buscador-ayuda">Filtra las alertas de reincidencia y fraccionamiento por contratista, funcionario o entidad.</p>
+      </div>
       <div class="pestanas" role="tablist" aria-label="Resultados">
         <button role="tab" id="tab-reincidencia" aria-controls="panel-reincidencia" aria-selected="true">Reincidencia <span class="contador" id="c-reincidencia">0</span></button>
         <button role="tab" id="tab-fraccionamiento" aria-controls="panel-fraccionamiento" aria-selected="false" tabindex="-1">Fraccionamiento <span class="contador" id="c-fraccionamiento">0</span></button>
