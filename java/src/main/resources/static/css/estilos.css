@@ -30,6 +30,22 @@ code { background: var(--verde-suave); padding: 1px 6px; border-radius: 4px; fon
 .etiqueta { display: inline-block; margin: 0; background: var(--naranja); color: var(--verde-oscuro);
   font-weight: 700; font-size: .78rem; letter-spacing: .08em; padding: 3px 14px; border-radius: 999px; }
 
+/* Login */
+.login-body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.login-caja { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: var(--radio);
+  box-shadow: var(--sombra); padding: 32px; width: 100%; max-width: 380px; }
+.login-titulo { margin: 10px 0 6px; font-size: 1.5rem; }
+.login-sub { color: var(--texto-suave); margin: 0 0 20px; }
+.login-form { display: grid; gap: 14px; }
+.login-campo { display: grid; gap: 6px; font-weight: 600; font-size: .9rem; color: var(--verde-oscuro); }
+.login-campo input { border: 1px solid var(--borde); border-radius: 10px; padding: 11px 12px; font: inherit; color: var(--texto); }
+.login-campo input:focus-visible { outline: 3px solid var(--naranja); outline-offset: 1px; }
+.login-form .boton { justify-content: center; margin-top: 4px; }
+
+/* Acciones del encabezado (exportar + salir) */
+.encabezado__acciones { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.salir-form { margin: 0; }
+
 /* Botones */
 .boton { display: inline-flex; align-items: center; gap: 8px; border: 0; cursor: pointer; text-decoration: none;
   background: var(--verde); color: #fff; font: inherit; font-weight: 600; padding: 11px 20px; border-radius: 10px;

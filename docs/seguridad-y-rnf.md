@@ -28,9 +28,9 @@ Cada fila es un hallazgo real sobre DAC, no una casilla marcada. **Estado:**
 | S-07 | Registro de eventos críticos | No quedaba rastro de quién cargó o exportó qué ni de los rechazos | Registro `dac.auditoria`: cada carga aceptada o rechazada y cada exportación, con fecha y cantidades, **sin nombres de personas** (S-8). Los saltos de línea se limpian para que nadie invente líneas en el registro | `SeguridadE2ETest` → *auditoría*, `AuditoriaTest` (3) | ✅ |
 | S-08 | Inyección de fórmulas al exportar | Ya corregido en HU-08 | Una celda que empieza por `= + - @` se exporta como texto | `ExportadorDeAlertasTest` | ✅ |
 | S-09 | Cargas simultáneas (DT-09) | Dos cargas al mismo tiempo del mismo contrato terminaban en un 500 sin explicación | La base sigue impidiendo el duplicado; ahora la respuesta es **409** con un mensaje que explica que no se guardó nada y se puede reintentar | Revisado en código (`ManejadorDeErrores`); la prueba concurrente queda en la deuda | ✅ |
-| S-10 | Autenticación y autorización | No hay inicio de sesión: cualquiera con acceso al puerto 8080 usa el sistema | No se implementa en este alcance | — | ⚠️ DT-03 |
-| S-11 | Hash de contraseñas | DAC no guarda contraseñas de usuarios (no hay cuentas) | — | — | — (aplicará con S-10) |
-| S-12 | Fuerza bruta de inicio de sesión | No hay inicio de sesión | — | — | — (aplicará con S-10) |
+| S-10 | Autenticación | No había inicio de sesión: cualquiera con acceso al puerto 8080 usaba el sistema | Inicio de sesión del analista (Spring Security): formulario para el navegador y HTTP Basic para clientes/pruebas; un solo usuario tomado del entorno | `SeguridadE2ETest` → *sin credenciales válidas la API responde 401* | ✅ básico (roles → DT-03) |
+| S-11 | Hash de contraseñas | — | La clave del analista se guarda como **hash BCrypt**, nunca en texto plano | `SeguridadWeb` (`BCryptPasswordEncoder`) | ✅ |
+| S-12 | Fuerza bruta de inicio de sesión | Sin límite de intentos de login | Pendiente: límite de intentos al desplegar | — | ⚠️ |
 | S-13 | Acceso directo a objetos (IDOR) | La API no expone identificadores ni datos por usuario; todo analista ve todo | Sin cambio | — | ⚠️ ligado a DT-03 |
 | S-14 | Cifrado en tránsito (HTTPS) | El servidor corre en `http://localhost` | No aplica mientras no se despliegue | — | ⚠️ DT-14 |
 | S-15 | Dependencias vulnerables | No hay revisión automática de las librerías | No se agrega en este alcance | — | ⚠️ DT-15 |
@@ -42,7 +42,7 @@ Cada fila es un hallazgo real sobre DAC, no una casilla marcada. **Estado:**
 | Base de contratos y alertas | Borrado o lectura indebida | Inyección SQL en un nombre del CSV | Consultas parametrizadas (S-03) | Alto |
 | Navegador del analista | Ejecución de código ajeno | Un `<script>` en un nombre del CSV | `textContent` + CSP (S-04) | Alto |
 | Excel de quien recibe el reporte | Ejecución de fórmulas | Un nombre que empieza por `=` | Neutralización al exportar (S-08) | Alto |
-| Datos sensibles (S-8) | Filtración | Acceso al puerto 8080 sin sesión | **Nada todavía** (DT-03) | Alto |
+| Datos sensibles (S-8) | Filtración | Acceso al puerto 8080 sin sesión | Inicio de sesión del analista (S-10) | Alto |
 | Disponibilidad | Saturar el servidor | Archivos enormes | Límite de 10 MB (S-02) | Medio |
 | Clave de la base | Uso indebido | Leerla en GitHub | `.env` fuera del repositorio (S-06) | Alto |
 | Registro de auditoría | Falsificarlo | Saltos de línea en un dato | Limpieza al registrar (S-07) | Medio |
@@ -129,7 +129,8 @@ de cada deuda está en [deuda-tecnica.md](deuda-tecnica.md).
 
 | Deuda | Por qué es aceptable hoy | Deja de ser aceptable cuando… |
 |---|---|---|
-| **DT-03** Sin inicio de sesión ni roles (S-10 a S-13) | DAC corre en el computador del analista, en `localhost`, solo con datos ficticios | Se despliegue en una red o se carguen datos reales. **Es la condición para usar datos reales** |
+| **DT-03** Faltan **roles** (analista/coordinador): ya hay inicio de sesión básico (S-10, S-11) pero con un solo usuario | DAC corre en `localhost`, un solo analista con datos ficticios | Varios perfiles necesiten permisos distintos, o se carguen datos reales |
+| **DT-16** CSRF desactivado | El único endpoint que cambia estado es la carga del CSV, con un solo usuario en `localhost`; no hay cookies de sesión compartidas con sitios externos de riesgo | Se despliegue en red (se paga junto con HTTPS, DT-14) |
 | **DT-14** Sin HTTPS | Sin despliegue no hay tráfico por la red | Se despliegue en cualquier servidor |
 | **DT-15** Sin revisión automática de dependencias | Las librerías son las de Spring Boot 3.3, que el equipo mantiene actualizadas a mano | Pase más de un semestre sin actualizar, o se despliegue |
 | **DT-09** La carga simultánea no tiene prueba automática | La base impide el duplicado y la respuesta ya es un 409 claro | Varios analistas usen el sistema al mismo tiempo |
@@ -163,13 +164,13 @@ of Exceptional Conditions** y metió SSRF dentro de **A01**.
 
 | Código 2025 | Categoría | Cómo aplica a DAC | Control / evidencia | Estado |
 |---|---|---|---|---|
-| **A01** | Broken Access Control | La API no distingue usuarios: cualquiera en el puerto 8080 ve todo. No hay SSRF: DAC no hace peticiones salientes | — | ⚠️ DT-03 (sin sesión, a propósito) |
+| **A01** | Broken Access Control | Ahora exige inicio de sesión (un solo usuario); falta separar roles (analista/coordinador). No hay SSRF: DAC no hace peticiones salientes | S-10, `SeguridadWeb` | ✅ básico (roles → DT-03) |
 | **A02** | Security Misconfiguration | Cabeceras de seguridad (CSP, `nosniff`, `X-Frame-Options`), errores sin trazas, secretos fuera del repo | S-01, S-05, S-06 | ✅ |
 | **A03** | Software Supply Chain Failures | Dependencias fijadas (Spring Boot 3.3.5); falta escaneo automático | ⚠️ DT-15 (sin OWASP Dependency-Check en CI) | ⚠️ |
 | **A04** | Cryptographic Failures | No guarda contraseñas ni datos personales que cifrar; sin HTTPS mientras es local | ⚠️ DT-14 (HTTPS al desplegar) | ⚠️ |
 | **A05** | Injection | Consultas parametrizadas (JPA); ataque SQLi probado; XSS frenado con `textContent` + CSP; fórmulas de CSV neutralizadas | S-03, S-04, S-08 | ✅ |
 | **A06** | Insecure Design | Una sola puerta de entrada (el CSV), validada en la frontera; modelo de amenazas documentado | S-02, sección 1 | ✅ |
-| **A07** | Authentication Failures | No hay inicio de sesión en este alcance | — | ⚠️ DT-03 |
+| **A07** | Authentication Failures | Inicio de sesión con la clave guardada como hash BCrypt; 401 sin credenciales válidas | S-10, S-11, `SeguridadWeb` | ✅ |
 | **A08** | Software or Data Integrity Failures | Idempotencia garantizada por la base (`uq_contrato_clave_natural`); conflictos de duplicados reportados (HU-06); auditoría a prueba de inyección de líneas | RNF-2, HU-06, S-07 | ✅ |
 | **A09** | Security Logging and Alerting Failures | Registro de auditoría de cada carga, exportación y rechazo, sin datos personales | S-07, `AuditoriaTest` | ✅ |
 | **A10** | Mishandling of Exceptional Conditions | Errores controlados: 400/409/413 con mensaje claro y sin trazas; un valor malo no deja la base a medias (transacción) | S-02, S-05, S-09 | ✅ |
@@ -212,7 +213,7 @@ autenticación o de red interna.
 |---|---|---|
 | Seguridad BD (NOT NULL, PK, parametrizadas) | `db/schema.sql`, S-03 | ✅ |
 | SQL Injection, XSS, fórmulas | S-03, S-04, S-08 (ataques simulados) | ✅ |
-| Login y contraseñas | No implementado, deuda **DT-03** | ⚠️ decisión del equipo |
+| Login y contraseñas | Inicio de sesión + hash BCrypt (S-10, S-11); faltan roles (DT-03) | ✅ básico |
 | OWASP Top 10:2025 | Sección 6 | ✅ mapeado |
 | RNF (performance, integridad, **escalabilidad 200**) | Sección 2 (RNF-1, RNF-2, **RNF-3**) | ✅ |
 | k6 (carga/concurrencia) | `rnf/k6-concurrencia.js`, RNF-3 | ✅ |

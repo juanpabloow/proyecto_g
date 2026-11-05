@@ -15,7 +15,7 @@ mantenimiento. **Baja** = incomodidad o costo futuro.
 |---|---|---|---|---|
 | DT-01 | Las alertas de fraccionamiento no se guardan en la base | Diseño | Alta | Medio |
 | DT-02 | Reglas de HU-03 y HU-05 sin validar con un analista real | Negocio | Alta | Bajo (reunión) + configuración |
-| DT-03 | La API y la pantalla no tienen inicio de sesión | Seguridad | Alta | Medio |
+| DT-03 | Falta separar roles (ya hay inicio de sesión básico de un solo usuario) | Seguridad | Media | Medio |
 | ~~DT-04~~ | ~~Credenciales de la base escritas en el repositorio~~ — **pagada en el Módulo 7** | Seguridad | — | — |
 | DT-05 | Alertas guardadas que ya no se recalculan (alertas "huérfanas") | Diseño | Media | Medio |
 | DT-06 | Cada carga relee **todo** el histórico en memoria | Rendimiento | Media | Alto |
@@ -28,6 +28,7 @@ mantenimiento. **Baja** = incomodidad o costo futuro.
 | DT-13 | Un solo tope de cuantía para todas las entidades | Negocio | Baja | Medio |
 | DT-14 | Sin HTTPS | Seguridad | Alta al desplegar | Bajo |
 | DT-15 | Sin revisión automática de dependencias vulnerables | Seguridad | Media | Bajo |
+| DT-16 | CSRF desactivado (se paga con HTTPS al desplegar) | Seguridad | Alta al desplegar | Bajo |
 
 ## Detalle
 
@@ -65,21 +66,19 @@ grave desde la visión.
 valores. Cambiarlos es editar `application.properties` y, para HU-05, la
 clase `NormalizadorDeNombres`. Responsable: rol de requisitos.
 
-### DT-03 — Sin inicio de sesión · Alta (deuda de seguridad)
+### DT-03 — Faltan roles · Media (antes: sin inicio de sesión)
 
-**Qué es.** Cualquiera que llegue al puerto 8080 puede cargar archivos,
-ver las alertas y exportarlas.
+**Pagado en parte.** Ya hay **inicio de sesión** (Spring Security, S-10)
+con la clave guardada como **hash BCrypt** (S-11): sin credenciales válidas
+la API responde 401 y el navegador va a la pantalla de login. Ver S-10 en
+[seguridad-y-rnf.md](seguridad-y-rnf.md).
 
-**Por qué se aceptó.** El sistema corre en el computador del analista,
-con datos ficticios, y no está desplegado.
+**Qué falta.** Separar **roles** (analista / coordinador): hoy hay un solo
+usuario, tomado de variables de entorno. Con datos reales, además, sigue
+siendo sensible quién ve y quién exporta (S-7, S-8).
 
-**Costo de no pagarla.** Con datos reales, los nombres de funcionarios y
-contratistas señalados son información sensible (S-7, S-8). Una alerta
-filtrada puede dañar la reputación de alguien inocente (R-4, S-6).
-**No se debe desplegar en red sin pagar esta deuda.**
-
-**Cómo se paga.** Spring Security con usuarios por rol (analista,
-coordinador) y HTTPS.
+**Cómo se paga.** Tabla de usuarios con rol y `@PreAuthorize` por endpoint
+(por ejemplo, que solo el coordinador exporte), más HTTPS (DT-14).
 
 ### DT-04 — Credenciales en el repositorio · **Pagada (Módulo 7)**
 
@@ -216,6 +215,22 @@ vulnerabilidad publicada.
 descarga una base de vulnerabilidades muy grande y alarga mucho el CI.
 **Cómo se paga.** Activar Dependabot en el repositorio o agregar la
 revisión en una ejecución semanal aparte del CI.
+
+### DT-16 — CSRF desactivado · Alta al desplegar
+
+**Qué es.** Al agregar el inicio de sesión (DT-03) se desactivó la
+protección CSRF de Spring Security.
+
+**Por qué se aceptó.** El único endpoint que cambia estado es la carga del
+CSV, usada por un solo analista en `localhost`; no hay despliegue ni varios
+usuarios, y evita el andamiaje de tokens CSRF en la interfaz para este alcance.
+
+**Costo de no pagarla.** En un despliegue con sesión por cookie, un sitio
+malicioso podría lograr que el navegador del analista enviara una carga sin
+que él la pida.
+
+**Cómo se paga.** Activar CSRF (token por cookie) y enviar la cabecera
+`X-XSRF-TOKEN` desde la interfaz; se hace junto con HTTPS (DT-14) al desplegar.
 
 ## Lo que sí se pagó en esta entrega
 

@@ -32,6 +32,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class AlertasE2ETest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final String USUARIO = "analista";       // credencial DEMO (ver application.properties)
+    private static final String CLAVE = "dac-demo-2026";
 
     @Autowired
     private TestRestTemplate rest;
@@ -44,6 +46,7 @@ class AlertasE2ETest {
 
     @BeforeEach
     void limpiarBaseDeDatos() {
+        rest = rest.withBasicAuth(USUARIO, CLAVE); // S-10: toda petición va autenticada
         jdbc.execute("TRUNCATE TABLE alerta_contrato, alerta, contrato, "
                 + "funcionario, contratista, entidad RESTART IDENTITY CASCADE");
     }

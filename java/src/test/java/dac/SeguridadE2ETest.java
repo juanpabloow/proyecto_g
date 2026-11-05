@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.*;
@@ -34,6 +35,8 @@ class SeguridadE2ETest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String ENCABEZADO = "numero_contrato,entidad,contratista,funcionario,monto,fecha\n";
+    private static final String USUARIO = "analista";       // credencial DEMO (ver application.properties)
+    private static final String CLAVE = "dac-demo-2026";
 
     @Autowired
     private TestRestTemplate rest;
@@ -44,10 +47,27 @@ class SeguridadE2ETest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @LocalServerPort
+    private int puerto;
+
     @BeforeEach
     void limpiarBaseDeDatos() {
+        rest = rest.withBasicAuth(USUARIO, CLAVE); // S-10: toda petición va autenticada
         jdbc.execute("TRUNCATE TABLE alerta_contrato, alerta, contrato, "
                 + "funcionario, contratista, entidad RESTART IDENTITY CASCADE");
+    }
+
+    @Test
+    @DisplayName("S-10 autenticación: sin credenciales válidas la API responde 401")
+    void exige_autenticacion() {
+        TestRestTemplate intruso = new TestRestTemplate("intruso", "clave-mala");
+        HttpHeaders cabeceras = new HttpHeaders();
+        cabeceras.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+        ResponseEntity<String> r = intruso.exchange(
+                "http://localhost:" + puerto + "/api/alertas",
+                HttpMethod.GET, new HttpEntity<>(cabeceras), String.class);
+        assertEquals(HttpStatus.UNAUTHORIZED, r.getStatusCode(),
+                "una credencial inválida no debe ver las alertas");
     }
 
     @Test
