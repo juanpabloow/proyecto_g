@@ -61,8 +61,11 @@ class SeguridadE2ETest {
     @DisplayName("S-10 autenticación: sin credenciales válidas la API responde 401")
     void exige_autenticacion() {
         TestRestTemplate intruso = new TestRestTemplate("intruso", "clave-mala");
-        ResponseEntity<String> r = intruso.getForEntity(
-                "http://localhost:" + puerto + "/api/alertas", String.class);
+        HttpHeaders cabeceras = new HttpHeaders();
+        cabeceras.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+        ResponseEntity<String> r = intruso.exchange(
+                "http://localhost:" + puerto + "/api/alertas",
+                HttpMethod.GET, new HttpEntity<>(cabeceras), String.class);
         assertEquals(HttpStatus.UNAUTHORIZED, r.getStatusCode(),
                 "una credencial inválida no debe ver las alertas");
     }

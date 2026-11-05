@@ -3,7 +3,7 @@ package dac.seguridad;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.User;
@@ -13,6 +13,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
  * Inicio de sesión del analista (S-10, Módulo 7). Antes DAC no tenía sesión:
@@ -57,15 +59,26 @@ public class SeguridadWeb {
     public SecurityFilterChain cadena(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login.html", "/login", "/css/**", "/js/login.js", "/actuator/**").permitAll()
+                .requestMatchers("/login.html", "/login", "/css/**", "/js/login.js", "/actuator/**", "/error").permitAll()
                 .anyRequest().authenticated())
+            // La API siempre responde 401 (nunca redirige al formulario): así un
+            // cliente que reenvía la cabecera no entra en un bucle de redirecciones.
+            // Las páginas del navegador sí van al login (formLogin, más abajo).
+            .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
+                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), new AntPathRequestMatcher("/api/**")))
             .formLogin(form -> form
                 .loginPage("/login.html")
                 .loginProcessingUrl("/login")
                 .defaultSuccessUrl("/", true)
                 .failureUrl("/login.html?error")
                 .permitAll())
-            .httpBasic(Customizer.withDefaults())
+            // HTTP Basic: una credencial inválida devuelve 401 directo (setStatus,
+            // no sendError: sendError re-despacha a /error y, en el navegador, eso
+            // terminaba en una redirección al login y un bucle). Sin cabecera
+            // WWW-Authenticate para no disparar el diálogo nativo del navegador
+            // (el navegador usa el formulario de login, no Basic).
+            .httpBasic(basic -> basic.authenticationEntryPoint(
+                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .logout(salir -> salir
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login.html?salida")
