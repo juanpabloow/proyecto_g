@@ -1,0 +1,14 @@
+# Prometheus raspa las métricas que publica DAC en /actuator/prometheus.
+# El servidor DAC corre en el host (no en este contenedor), así que se le
+# llega por host.docker.internal.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: dac
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+        labels:
+          application: dac

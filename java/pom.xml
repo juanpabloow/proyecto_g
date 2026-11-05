@@ -41,6 +41,19 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Observabilidad (RNF Security/Availability): Actuator expone
+             /actuator/health y /actuator/prometheus; el registro de Micrometer
+             publica las métricas en el formato que lee Prometheus/Grafana. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Pruebas -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

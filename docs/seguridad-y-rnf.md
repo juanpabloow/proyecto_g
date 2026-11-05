@@ -99,6 +99,28 @@ trabajar con índices en memoria ([Decisión 25](decisiones-tecnicas.md)).
 
 ![RNF-2](seguridad/rnf-2-integridad.svg)
 
+### RNF-3 — Escalabilidad ante usuarios concurrentes
+
+| | |
+|---|---|
+| **Escenario** | **200 usuarios** leyendo el estado del sistema a la vez (`GET /api/alertas`), sobre una base de **1.209 contratos** (243 reincidencias y 75 fraccionamientos); cada respuesta recalcula las dos señales y pesa ~156 KB |
+| **Objetivo** | Menos del **1 %** de peticiones con error y **p95 ≤ 1.500 ms** en el endpoint dinámico |
+| **Método** | [k6](https://k6.io) (`rnf/k6-concurrencia.js`): sube a 200 usuarios en 15 s, los sostiene 30 s y baja en 10 s; **solo lecturas** (no ensucia la base, se puede repetir) |
+| **Resultado** | ✅ **Cumple.** 40.564 peticiones a **737 req/s**, **0 % de errores** (0/40.564). `GET /api/alertas`: **p95 = 771 ms** (51 % del límite), promedio 419 ms, máximo 2,06 s. La página estática bajo la misma carga: p95 **4,5 ms** |
+
+**Condiciones:** medición local del 4 de noviembre de 2026 (macOS, Apple
+Silicon), servidor Spring Boot con el pool de conexiones por defecto (10) y
+PostgreSQL 16 en contenedor. A diferencia de RNF-1 y RNF-2 (que mide el CI en
+cada corrida), este escenario se ejecuta a mano con k6 porque necesita un
+generador de carga externo.
+
+**Hallazgo:** `GET /api/alertas` recalcula ambas señales sobre todo el
+histórico en cada petición; con 200 usuarios el techo es el pool de 10
+conexiones, no la CPU. Hoy cumple de sobra; si la base creciera mucho o se
+exigiera un p95 más bajo, el siguiente paso sería **cachear o precalcular**
+las alertas (ligado a DT-01, que ya anota que el fraccionamiento no se
+persiste). Reproducible con `k6 run rnf/k6-concurrencia.js`.
+
 ## 3. Deuda de seguridad declarada
 
 Riesgos que **decidimos no atender** en este alcance, por qué es
@@ -130,3 +152,71 @@ de cada deuda está en [deuda-tecnica.md](deuda-tecnica.md).
   correcciones con su commit.
 - [Semana 14](seguridad/semana-14.md): tabla de RNF con gráficas,
   estabilización y release candidate.
+
+## 6. Mapeo OWASP Top 10:2025
+
+Cómo responde DAC a cada categoría del
+[OWASP Top 10:2025](https://top10.owasp.org/2025/). Casi todo ya estaba en el
+checklist de la sección 1; esta tabla lo deja explícito contra el estándar
+2025, que estrena **A03 Software Supply Chain Failures** y **A10 Mishandling
+of Exceptional Conditions** y metió SSRF dentro de **A01**.
+
+| Código 2025 | Categoría | Cómo aplica a DAC | Control / evidencia | Estado |
+|---|---|---|---|---|
+| **A01** | Broken Access Control | La API no distingue usuarios: cualquiera en el puerto 8080 ve todo. No hay SSRF: DAC no hace peticiones salientes | — | ⚠️ DT-03 (sin sesión, a propósito) |
+| **A02** | Security Misconfiguration | Cabeceras de seguridad (CSP, `nosniff`, `X-Frame-Options`), errores sin trazas, secretos fuera del repo | S-01, S-05, S-06 | ✅ |
+| **A03** | Software Supply Chain Failures | Dependencias fijadas (Spring Boot 3.3.5); falta escaneo automático | ⚠️ DT-15 (sin OWASP Dependency-Check en CI) | ⚠️ |
+| **A04** | Cryptographic Failures | No guarda contraseñas ni datos personales que cifrar; sin HTTPS mientras es local | ⚠️ DT-14 (HTTPS al desplegar) | ⚠️ |
+| **A05** | Injection | Consultas parametrizadas (JPA); ataque SQLi probado; XSS frenado con `textContent` + CSP; fórmulas de CSV neutralizadas | S-03, S-04, S-08 | ✅ |
+| **A06** | Insecure Design | Una sola puerta de entrada (el CSV), validada en la frontera; modelo de amenazas documentado | S-02, sección 1 | ✅ |
+| **A07** | Authentication Failures | No hay inicio de sesión en este alcance | — | ⚠️ DT-03 |
+| **A08** | Software or Data Integrity Failures | Idempotencia garantizada por la base (`uq_contrato_clave_natural`); conflictos de duplicados reportados (HU-06); auditoría a prueba de inyección de líneas | RNF-2, HU-06, S-07 | ✅ |
+| **A09** | Security Logging and Alerting Failures | Registro de auditoría de cada carga, exportación y rechazo, sin datos personales | S-07, `AuditoriaTest` | ✅ |
+| **A10** | Mishandling of Exceptional Conditions | Errores controlados: 400/409/413 con mensaje claro y sin trazas; un valor malo no deja la base a medias (transacción) | S-02, S-05, S-09 | ✅ |
+
+Los ⚠️ son deuda **declarada y justificada** (sección 3): aceptable mientras
+DAC corra en `localhost` solo con datos ficticios; deja de serlo al desplegar
+o al cargar datos reales.
+
+## 7. Observabilidad (métricas y monitoreo)
+
+Para medir el comportamiento del sistema —no solo comprobar que "funciona"—
+DAC publica métricas con **Spring Boot Actuator + Micrometer**:
+
+- `GET /actuator/health` — estado del servicio y de la base (liveness/readiness).
+- `GET /actuator/prometheus` — métricas en formato Prometheus: latencia por
+  endpoint (`http_server_requests_seconds`), pool de conexiones
+  (`hikaricp_connections`), memoria y GC de la JVM.
+
+Se exponen **solo** `health`, `info` y `prometheus` (nada de secretos ni datos
+de contratos). El stack de visualización es opcional y vive en
+[`observabilidad/`](../observabilidad/): Prometheus raspa la app y Grafana la
+grafica, con la fuente de datos ya configurada.
+
+```
+docker compose -f observabilidad/docker-compose.observabilidad.yml up -d
+# Prometheus: http://localhost:9090 · Grafana: http://localhost:3000 (admin/admin)
+```
+
+Con esto se miden los tiempos de respuesta por endpoint y se identifican
+cuellos de botella (por ejemplo, el pool de 10 conexiones que marca el techo
+de RNF-3).
+
+**Nota de seguridad:** `/actuator/prometheus` queda abierto, coherente con
+DT-03 (sin sesión en `localhost`); al desplegar debe ir detrás de
+autenticación o de red interna.
+
+## 8. Correspondencia con el checklist de clase (28 de octubre de 2026)
+
+| Punto de clase | Dónde se cubre | Estado |
+|---|---|---|
+| Seguridad BD (NOT NULL, PK, parametrizadas) | `db/schema.sql`, S-03 | ✅ |
+| SQL Injection, XSS, fórmulas | S-03, S-04, S-08 (ataques simulados) | ✅ |
+| Login y contraseñas | No implementado, deuda **DT-03** | ⚠️ decisión del equipo |
+| OWASP Top 10:2025 | Sección 6 | ✅ mapeado |
+| RNF (performance, integridad, **escalabilidad 200**) | Sección 2 (RNF-1, RNF-2, **RNF-3**) | ✅ |
+| k6 (carga/concurrencia) | `rnf/k6-concurrencia.js`, RNF-3 | ✅ |
+| Grafana / observabilidad | Sección 7, `observabilidad/` | ✅ |
+| Superficie de entrada | Sección 1 (el CSV es la única puerta) | ✅ |
+| Documentación `/docs/seguridad-y-rnf.md` | Este archivo | ✅ |
+| Declarar uso de IA | [uso-ia.md](uso-ia.md) | ✅ |

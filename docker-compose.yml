@@ -6,8 +6,10 @@ services:
       # Usuario y clave salen del archivo .env (copia de .env.example),
       # que Git ignora: los secretos no se versionan (Decisión 24).
       POSTGRES_DB: ${DB_NAME:-dac}
-      POSTGRES_USER: ${DB_USER:?Falta DB_USER: copia .env.example como .env}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD: copia .env.example como .env}
+      # Comillas: el mensaje de ${VAR:?...} lleva ":" y sin comillas rompe el
+      # YAML en Docker Compose v2+ ("mapping values are not allowed").
+      POSTGRES_USER: "${DB_USER:?Falta DB_USER: copia .env.example como .env}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?Falta DB_PASSWORD: copia .env.example como .env}"
     ports:
       - "5433:5432"
     volumes:

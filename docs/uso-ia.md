@@ -89,6 +89,38 @@ trabajo se subió desde la cuenta de GitHub de Gerson Rojo en la rama
 | Agregar la revisión automática de dependencias (OWASP Dependency-Check) al CI | **No se aplica**: alarga mucho cada ejecución del CI; queda como deuda DT-15 |
 | Desplegar el release candidate en un servicio gratuito (nivel avanzado, opcional) | **No se aplica**: sin inicio de sesión ni HTTPS no es seguro publicarlo |
 
+## Declaración de esta entrega: observabilidad, carga (k6) y OWASP 2025
+
+Usamos **Claude (Anthropic)** como asistente, desde nuestros computadores.
+Esta entrega responde al checklist de clase del 28 de octubre de 2026.
+
+**En qué nos ayudó la IA:**
+
+- Revisar todo el proyecto contra el checklist y decirnos, con evidencia del
+  código, qué ya cumplía y qué faltaba.
+- Agregar observabilidad: Spring Boot Actuator + Micrometer
+  (`/actuator/health` y `/actuator/prometheus`) y el stack opcional de
+  Prometheus + Grafana en `observabilidad/`.
+- Escribir la prueba de carga con k6 (`rnf/k6-concurrencia.js`) y ejecutarla:
+  200 usuarios concurrentes, 0 % de errores, p95 de 771 ms (RNF-3).
+- Mapear los controles de seguridad al OWASP Top 10:2025 (sección 6 de
+  [seguridad-y-rnf.md](seguridad-y-rnf.md)), con la lista verificada contra el
+  sitio oficial.
+- Arreglar `docker-compose.yml` (unas comillas que rompían el YAML en Docker
+  Compose v2+) para que `docker compose up -d` funcione.
+
+**Lo que decidimos nosotros:**
+
+- **No** agregar inicio de sesión: sigue como deuda **DT-03**. La IA lo marcó
+  como el único ítem del checklist que contradice una decisión ya documentada
+  y recomendó no tocarlo sin acordarlo con el equipo. Igual **DT-15** (escaneo
+  automático de dependencias), que se queda como deuda por el tiempo de CI.
+- Pedimos expresamente subir estos cambios a `main`.
+
+**Verificación:** 56 pruebas de dominio en verde, arranque de la app con los
+endpoints de Actuator comprobados, k6 con 0 % de errores, y el CI de GitHub
+Actions corriendo la suite completa sobre PostgreSQL real.
+
 ## Qué no se hizo con IA
 - Las decisiones de alcance (qué señal cubrir primero, qué queda fuera
   del MVP) fueron discutidas y decididas por el equipo.
