@@ -81,6 +81,35 @@ Decisión 12 es una **excepción explícita**, y conviene que se note:
 | 29 | **Maven Wrapper en la raíz** con un POM agregador mínimo (`pom.xml` que solo declara el módulo `java/`): `./mvnw spring-boot:run` y `./mvnw verify` funcionan desde la raíz | Dejar el wrapper en `java/` y pedir `cd java`; o mover `java/pom.xml` y `src/` a la raíz | La guía de entrega pide esos comandos desde un clon limpio. El agregador no mueve código ni cambia `java/pom.xml`: si algo fallara, se borra un archivo y se vuelve a `cd java`. Mover el proyecto habría cambiado todas las rutas del CI y de la documentación. El agregador salta `spring-boot:run` (`<skip>true</skip>`) para que solo arranque el módulo |
 | 30 | La **credencial demo** del analista vive solo en el perfil `dev` (`application-dev.properties`); fuera de él, sin `DAC_AUTH_USER` y `DAC_AUTH_PASSWORD` la aplicación no arranca | Mantener una credencial por defecto en `application.properties` | Una clave conocida que funciona sin configurar nada es un fallo de autenticación (OWASP A07). Las pruebas activan el perfil `dev` desde la configuración de surefire, así que no necesitan variables |
 | 31 | Las **cabeceras de seguridad** las escribe Spring Security en todas las respuestas, y se elimina el filtro propio `CabecerasDeSeguridad` | Mantener el filtro propio | El filtro corría **después** de Spring Security: un 401 salía sin CSP ni `nosniff`. Dejar los dos habría duplicado las cabeceras |
+| 32 | **Mockito** solo en las pruebas unitarias de la capa de aplicación (`ContratoServicioTest`); las pruebas de punta a punta **no** usan mocks | Usar `@MockBean` en las pruebas E2E; o no usar Mockito | Ver la sección siguiente |
+
+## Dónde se usa Mockito y por qué las E2E no usan mocks (Decisión 32)
+
+**Dónde:** `java/src/test/java/dac/aplicacion/ContratoServicioTest.java`.
+Simula los cinco repositorios (`@Mock EntidadRepo`, `ContratoRepo`…) y usa el
+dominio real (`CargadorDeContratos`, los dos detectores). Tres pruebas, cada
+una con sus pasos de preparar, ejecutar y verificar a la vista:
+
+| Prueba | Qué verifica con Mockito |
+|---|---|
+| `no_guarda_un_contrato_cuya_clave_ya_existe` (HU-07 / R-2) | `verify(contratoRepo, never()).save(any())`: un contrato cuya clave ya está guardada no genera un INSERT |
+| `guarda_una_sola_vez_el_contrato_repetido_en_el_archivo` (HU-01, problema duro) | `verify(contratoRepo, times(1)).save(captor)`: una fila repetida produce un solo INSERT, con monto `BigDecimal` y fecha `LocalDate` |
+| `un_monto_negativo_no_toca_la_base` (R-8) | `verifyNoInteractions(...)`: un valor malo se rechaza **antes** de usar cualquier repositorio |
+
+**Por qué aquí:** estas reglas son sobre **qué se escribe** en la base. Con
+la base real solo se ve el resultado final (cuántas filas quedaron). Con
+mocks se ve la interacción misma (no hubo `save`) y las pruebas corren en
+milisegundos, sin Docker.
+
+**Por qué las E2E no usan mocks:** la
+[Decisión 16](#decisiones-de-alcance-y-tecnología) exige que las pruebas de
+punta a punta entren por **HTTP real** (`RANDOM_PORT` + `TestRestTemplate`)
+contra **PostgreSQL real**. Lo que defienden (las restricciones
+`uq_contrato_clave_natural` y `ck_contrato_monto`, la transacción, el JSON y
+las cabeceras de seguridad) **solo existe** en la base y en el servidor
+reales. Un `@MockBean` haría pasar la prueba aunque la restricción de la
+base no existiera. Las dos capas se complementan: Mockito aísla la regla de
+la aplicación y la E2E demuestra que el sistema completo la cumple.
 
 ## Patrones de diseño
 
