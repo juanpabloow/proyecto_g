@@ -54,78 +54,76 @@ implementación paralela en Python se consolidó aquí
 
 ## Cómo correrlo
 
-Requiere **Docker**, **JDK 21+** y **Maven**. Los ejemplos con `curl`
-canalizan la respuesta a [`jq`](https://jqlang.github.io/jq/) solo para
-leerla formateada: si no lo tienes, quita el `| jq` y el comando funciona
-igual.
-
-### 1. Levantar la base de datos
-
-La primera vez, crea tu archivo de secretos y **cambia las claves**:
+Requiere **Docker** y **JDK 21 o superior**. Maven **no** hace falta: el
+Maven Wrapper (`./mvnw`, o `mvnw.cmd` en Windows) descarga la versión
+correcta la primera vez. Todos los comandos se corren desde la **raíz del
+proyecto**.
 
 ```bash
-cp .env.example .env
+cp .env.example .env        # 1. secretos locales: edítalo y cambia las claves
+docker compose up -d        # 2. PostgreSQL 16 y el visor web de la base
+./mvnw spring-boot:run      # 3. DAC en http://localhost:8080 (deja esta terminal abierta)
+./mvnw verify               # 4. en otra terminal: compila y corre las 88 pruebas
 ```
+
+### 1. El archivo `.env`
+
+`.env` no se sube al repositorio (está en `.gitignore`). Lo leen Docker y la
+aplicación: `./mvnw spring-boot:run` lo carga solo, no hay que exportar nada
+([Decisión 24](docs/decisiones-tecnicas.md)). Variables:
 
 | Variable | Para qué | ¿Obligatoria? |
 |---|---|---|
 | `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Usuario y clave de PostgreSQL | Sí |
-| `DAC_AUTH_USER`, `DAC_AUTH_PASSWORD` | Usuario y clave para entrar a DAC (pantalla de login y API) | Sí, salvo con el perfil de desarrollo (`java/ejecutar.sh dev`) |
-| `GRAFANA_ADMIN_PASSWORD` | Clave del usuario `admin` de Grafana | Solo si usas la observabilidad |
+| `DAC_AUTH_USER`, `DAC_AUTH_PASSWORD` | Usuario y clave para **entrar a DAC** (pantalla de login y API) | Sí. Si faltan, la aplicación no arranca y dice qué definir |
+| `GRAFANA_ADMIN_PASSWORD` | Clave del usuario `admin` de Grafana | Solo para la observabilidad opcional |
 
-`.env` no se sube al repositorio (está en `.gitignore`). Lo leen Docker y
-la aplicación ([Decisión 24](docs/decisiones-tecnicas.md)). Si falta la
-credencial del analista, la aplicación **no arranca** y dice qué variable
-definir: no existe una clave por defecto fuera del perfil de desarrollo.
+No hay credencial por defecto. Solo el perfil de desarrollo trae una
+credencial demo para probar en tu computador:
+`./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` entra con
+`analista` / `dac-demo-2026`. Nunca lo uses con datos reales.
 
-```bash
-docker compose up -d
-```
+### 2. La base de datos
 
-> Si ya tenías la base creada con la clave anterior (`dac_pass`), pon esa
-> misma clave en `.env`, o borra el volumen con `docker compose down -v`.
+`docker compose up -d` levanta PostgreSQL 16 en `localhost:5433` y un visor
+web en `localhost:8081`, publicados **solo en 127.0.0.1**. La primera vez
+crea las 6 tablas desde [db/schema.sql](db/schema.sql) y siembra 5 contratos
+de ejemplo desde [db/datos.sql](db/datos.sql). Para mirar lo que hay
+adentro, ve a [Ver los datos](#ver-los-datos).
 
-PostgreSQL 16 en `localhost:5433` y un visor web en `localhost:8081`,
-publicados **solo en 127.0.0.1** (no quedan expuestos a la red local).
-La primera vez crea las 6 tablas desde [db/schema.sql](db/schema.sql) y
-siembra datos de ejemplo desde [db/datos.sql](db/datos.sql).
+> Si ya tenías la base creada con otra clave, pon esa misma clave en `.env`
+> o borra el volumen con `docker compose down -v`.
 
-Para mirar lo que hay adentro, ve a [Ver los datos](#ver-los-datos).
+### 3. El servidor y cómo entrar
 
-### 2. Correr las pruebas
+`./mvnw spring-boot:run` deja la terminal ocupada; `Ctrl+C` lo detiene.
+Abre **http://localhost:8080**: te lleva a la pantalla de login. Entra con
+el `DAC_AUTH_USER` y el `DAC_AUTH_PASSWORD` de tu `.env`. Para otro puerto:
+`SERVER_PORT=8090 ./mvnw spring-boot:run`.
 
-```bash
-cd java && mvn test
-```
-
-Esperado: `Tests run: 88, Failures: 0, Errors: 0`. Las 59 de dominio no
-necesitan la base; las 29 de punta a punta sí (y vacían sus tablas con
-`TRUNCATE`).
-
-### 3. Levantar el servidor
-
-```bash
-java/ejecutar.sh          # con la credencial de tu .env (DAC_AUTH_USER / DAC_AUTH_PASSWORD)
-java/ejecutar.sh dev      # perfil de desarrollo: credencial DEMO analista / dac-demo-2026
-```
-
-Usa **uno** de los dos. El perfil `dev` existe solo para probar en tu
-computador: nunca lo uses con datos reales. Para otro puerto:
-`SERVER_PORT=8090 java/ejecutar.sh`.
-
-Queda ocupada la terminal. `Ctrl+C` para pararlo. Abre **otra terminal**
-para los comandos siguientes y carga ahí tus variables, que usan los
-ejemplos con `curl`:
+Para los ejemplos con `curl`, carga tus variables en esa otra terminal:
 
 ```bash
 set -a; source .env; set +a
 ```
 
-### 4. Usarlo
+Los ejemplos canalizan la respuesta a [`jq`](https://jqlang.github.io/jq/)
+solo para leerla formateada: si no lo tienes, quita el `| jq`.
+
+### Pruebas
+
+`./mvnw verify` necesita la base corriendo. Esperado:
+`Tests run: 88, Failures: 0, Errors: 0, Skipped: 0` y `BUILD SUCCESS`. Las
+59 de dominio no usan la base. Las 29 de punta a punta sí, y **vacían sus
+tablas** (`TRUNCATE`): no las corras sobre datos que quieras conservar.
+
+`java/ejecutar.sh` sigue existiendo como atajo (`run`, `dev`, `build`) sobre
+los mismos comandos del wrapper.
+
+### Usarlo
 
 **Desde el navegador:** abre **http://localhost:8080**, entra con tu
-usuario y clave (los de `.env`, o `analista` / `dac-demo-2026` con el
-perfil `dev`), arrastra un CSV
+usuario y clave, arrastra un CSV
 (por ejemplo `data/contratos_ejemplo.csv`) y pulsa **Analizar archivo**.
 Las pestañas muestran las alertas de reincidencia y de fraccionamiento
 con su evidencia, las filas descartadas y los conflictos. El botón
@@ -345,7 +343,7 @@ duro— y `\q` sale.
 | El servidor no arranca | La base está apagada | `docker compose up -d` |
 | `relation ... does not exist` | El volumen quedó a medias | `docker compose down -v && docker compose up -d` |
 | `contratosNuevos: 0` en la primera carga | El contenedor sembró `db/datos.sql` | Reinicia a estado limpio (arriba) |
-| Números distintos a los esperados | `mvn test` dejó otro estado en la base | Reinicia a estado limpio (arriba) |
+| Números distintos a los esperados | `./mvnw verify` dejó otro estado en la base | Reinicia a estado limpio (arriba) |
 | `mvn: command not found` | Terminal abierta antes de instalar Maven | Abre una terminal nueva |
 
 Para borrar **todo**, incluidos los datos, y volver al punto de partida:

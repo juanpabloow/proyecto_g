@@ -160,14 +160,14 @@ de las 8 historias tiene su prueba;
 ninguna historia se declaró "hecha" sin ella.
 
 Los nombres de las pruebas **son** los criterios de aceptación: al correr
-`mvn test` se lee la trazabilidad historia → prueba en la propia salida.
+`./mvnw verify` se lee la trazabilidad historia → prueba en la propia salida.
 
 ## 5. Cómo verificarlo
 
 ```bash
 docker compose up -d             # PostgreSQL 16 en localhost:5433 + Adminer en localhost:8081
-cd java && mvn test              # las 88 pruebas
-java/ejecutar.sh                 # levanta el endpoint en localhost:8080
+./mvnw verify                    # las 88 pruebas (desde la raíz)
+./mvnw spring-boot:run           # levanta DAC en localhost:8080
 ```
 
 Con el servidor arriba:
@@ -183,7 +183,7 @@ contratos como evidencia (uno en la alcaldía y dos en la gobernación: la
 señal cruza entidades, R-3). Repetir el mismo `curl` vuelve a dar
 `contratosNuevos: 0`: eso es HU-07.
 
-Salida esperada de `mvn test`: `Tests run: 88, Failures: 0, Errors: 0`.
+Salida esperada de `./mvnw verify`: `Tests run: 88, Failures: 0, Errors: 0`.
 Las 26 de punta a punta requieren el contenedor arriba; las otras 56 no
 tocan la base.
 

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  POM agregador de la raíz: permite correr desde la raíz del proyecto los
+  comandos de la guía de entrega, con el Maven Wrapper (./mvnw):
+
+    ./mvnw spring-boot:run     inicia DAC en http://localhost:8080
+    ./mvnw verify              compila y corre la suite completa
+
+  No contiene código ni dependencias: el proyecto real está en java/pom.xml,
+  que sigue funcionando solo (cd java && ../mvnw verify).
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>dac</groupId>
+    <artifactId>dac-raiz</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>DAC — raíz (agregador)</name>
+
+    <modules>
+        <module>java</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <!-- Para que "./mvnw spring-boot:run" desde la raíz arranque solo el
+                 módulo java/: en este POM agregador el plugin se salta. -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>3.3.5</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
