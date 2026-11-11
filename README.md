@@ -38,7 +38,7 @@ una alerta es una hipótesis a verificar por una persona
 - Las filas incompletas se descartan y se reportan (HU-04).
 - **Interfaz web** en http://localhost:8080 para cargar el CSV, ver las
   alertas con su evidencia y **exportar el reporte** a Excel (HU-08).
-- **82 pruebas automatizadas:** 56 de dominio y 26 de punta a punta por
+- **88 pruebas automatizadas:** 59 de dominio y 29 de punta a punta por
   HTTP real contra PostgreSQL, incluidas pruebas de ataques simulados y la
   medición de los dos requisitos no funcionales. Corren solas en cada Pull
   Request (GitHub Actions).
@@ -98,8 +98,9 @@ Para mirar lo que hay adentro, ve a [Ver los datos](#ver-los-datos).
 cd java && mvn test
 ```
 
-Esperado: `Tests run: 82, Failures: 0, Errors: 0`. Las 56 de dominio no
-necesitan la base; las 26 de punta a punta sí.
+Esperado: `Tests run: 88, Failures: 0, Errors: 0`. Las 59 de dominio no
+necesitan la base; las 29 de punta a punta sí (y vacían sus tablas con
+`TRUNCATE`).
 
 ### 3. Levantar el servidor
 
