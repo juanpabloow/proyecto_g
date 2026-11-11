@@ -37,7 +37,7 @@ Cada fila es un hallazgo real sobre DAC, no una casilla marcada. **Estado:**
 | S-11 | Hash de contraseñas | — | La clave del analista se guarda en memoria como **hash BCrypt** | `SeguridadWeb` (`BCryptPasswordEncoder`) | ✅ |
 | S-12 | Credencial por defecto | La aplicación arrancaba con una credencial demo conocida (`analista` / `dac-demo-2026`) si no se configuraba nada | La credencial demo solo existe en el perfil de desarrollo (`application-dev.properties`, `java/ejecutar.sh dev`). Fuera de él, sin `DAC_AUTH_USER` y `DAC_AUTH_PASSWORD` la aplicación **no arranca** y dice qué definir. La clave de Grafana sale de `.env` (antes `admin/admin`) | `CredencialDelAnalistaTest` (3), `SeguridadE2ETest` → *la clave no está en el código*, y demostración en vivo | ✅ |
 | S-13 | Actuator expuesto | `/actuator/prometheus` e `/actuator/info` respondían sin sesión | Solo `/actuator/health` es público; `info` y `prometheus` responden **401** sin credenciales. Prometheus raspa con usuario y clave | `SeguridadE2ETest` → *Actuator: health es público; info y prometheus exigen autenticación*, y demostración en vivo | ✅ |
-| S-14 | Puertos expuestos a la red | PostgreSQL (5433), Adminer (8081), Prometheus (9090) y Grafana (3000) escuchaban en todas las interfaces | Se publican solo en `127.0.0.1` | `docker port dac_db` → `127.0.0.1:5433` (demostración en vivo) | ✅ |
+| S-14 | Puertos expuestos a la red | PostgreSQL (5433), Adminer (8081), Prometheus (9090) y Grafana (3000) escuchaban en todas las interfaces | Se publican solo en `127.0.0.1` | `docker port` (demostraciones 17 y 18) | ✅ |
 | S-15 | Fuerza bruta en el login | Sin límite de intentos | — | — | ⚠️ deuda |
 | S-16 | Mínimo privilegio en la base | La aplicación se conecta con `dac_user`, que es **superusuario** de PostgreSQL | — | `SELECT rolsuper FROM pg_roles` → `t` | ⚠️ deuda |
 | S-17 | CSRF | Desactivado (DT-16) | — | — | ⚠️ deuda |
@@ -55,16 +55,16 @@ Todo lo que llega desde fuera se trata como no confiable.
 | … encabezado | Nombres de columna | Deben estar las 6 columnas requeridas (R-1) → 400 que nombra las que faltan | `CargadorDeContratosTest` |
 | … número, entidad, contratista, funcionario | Texto | No vacíos (R-6); longitud máxima 50/200 → fila descartada con motivo | `FilasIncompletasTest`, `ValidacionEnLaFronteraTest` |
 | … monto | Texto | Número ≥ 0 → si no, **400 con número de fila** | *monto negativo* |
-| … fecha | Texto | AAAA-MM-DD → si no, 400 con número de fila | revisado en código (`ContratoServicio.aFecha`) |
+| … fecha | Texto | AAAA-MM-DD → si no, 400 con número de fila | demostración 12 (`15/01/2026` → 400 "Fila 2: fecha no válida…") |
 | … columnas adicionales | Texto | Se aceptan sin validar y vuelven en la respuesta JSON (`camposAdicionales`); no se guardan | — (ver deuda) |
 | `POST /login` · `username`, `password` | Formulario | Spring Security; la clave se compara con el hash BCrypt. **Sin límite de intentos** | *sin credenciales válidas…* |
 | Cabecera `Authorization: Basic` | Usuario y clave en cada petición | Spring Security (BCrypt en cada petición, ver RNF-3) | *sin credenciales válidas…* |
-| Cookie `JSESSIONID` | Identificador de sesión | Spring Security; `HttpOnly`. **Sin CSRF** (deuda) | demostración en vivo |
+| Cookie `JSESSIONID` | Identificador de sesión | Spring Security; `HttpOnly`. **Sin CSRF** (deuda) | demostraciones 1 y 9 |
 | `GET /api/alertas`, `GET /api/alertas/exportar` | Sin parámetros | Exigen sesión → 401 sin credenciales | `AlertasE2ETest`, *401* |
 | `/actuator/health` | Sin parámetros | Público; solo devuelve `UP`/`DOWN`, sin detalles | *Actuator…* |
 | `/actuator/info`, `/actuator/prometheus` | Sin parámetros | Exigen autenticación → 401 | *Actuator…* |
-| `/logout` | — | Cierra la sesión | — |
-| Archivos estáticos (`/`, `/login.html`, CSS, JS) | — | La página principal exige sesión; el login y sus estilos son públicos | demostración en vivo |
+| `/logout` | — | Cierra la sesión; después la API responde 401 | demostración 10 |
+| Archivos estáticos (`/`, `/login.html`, CSS, JS) | — | La página principal exige sesión (el navegador va al login); el login y sus estilos son públicos | demostración 1 |
 | Indirectas: PostgreSQL :5433, Adminer :8081, Prometheus :9090, Grafana :3000 | Conexiones locales | Solo en `127.0.0.1`; claves desde `.env` | `docker port` |
 
 ### Modelo básico de amenazas

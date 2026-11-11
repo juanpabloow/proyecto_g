@@ -139,6 +139,8 @@ Para ver cada señal hay un archivo de ejemplo:
 | `data/contratos_incompletos_ejemplo.csv` | Filas descartadas y un duplicado (HU-04) |
 | `data/contratos_nombres_variantes_ejemplo.csv` | El mismo par escrito de tres formas (HU-05) |
 | `data/contratos_fraccionamiento_ejemplo.csv` | 3 contratos que fraccionan 105 millones en 18 días (HU-03) |
+| `data/contratos_conflicto_ejemplo.csv` | Un contrato ya guardado que llega con otro monto y un duplicado con datos distintos (HU-06) |
+| `data/contratos_ataques_ejemplo.csv` | Nombres con inyección SQL y XSS que se guardan y muestran como texto (S-03, S-04) |
 
 **Desde la terminal:**
 
