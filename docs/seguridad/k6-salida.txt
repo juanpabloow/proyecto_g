@@ -1,0 +1,33 @@
+# k6 run rnf/k6-concurrencia.js — 2026-11-11, Apple M4 Pro (12 núcleos), base con 1.200 contratos (semilla 2026)
+  █ THRESHOLDS 
+    http_req_duration{endpoint:alertas}
+    ✗ 'p(95)<1500' p(95)=2.72s
+    http_req_duration{endpoint:pagina}
+    ✓ 'p(95)<500' p(95)=42.31ms
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+  █ TOTAL RESULTS 
+    checks_total.......: 20980   380.91833/s
+    checks_succeeded...: 100.00% 20980 out of 20980
+    checks_failed......: 0.00%   0 out of 20980
+    ✓ alertas -> 200
+    ✓ alertas -> JSON
+    ✓ alertas -> no-store
+    ✓ pagina -> 200
+    HTTP
+    http_req_duration..............: avg=819.45ms min=334µs   med=100.88ms max=4.3s     p(90)=2.29s  p(95)=2.53s  
+      { endpoint:alertas }.........: avg=1.62s    min=83.55ms med=1.72s    max=4.3s     p(90)=2.53s  p(95)=2.72s  
+      { endpoint:pagina }..........: avg=10.7ms   min=334µs   med=3.23ms   max=331.37ms p(90)=27.4ms p(95)=42.31ms
+      { expected_response:true }...: avg=819.45ms min=334µs   med=100.88ms max=4.3s     p(90)=2.29s  p(95)=2.53s  
+    http_req_failed................: 0.00%  0 out of 10490
+    http_reqs......................: 10490  190.459165/s
+    EXECUTION
+    iteration_duration.............: avg=1.63s    min=84.17ms med=1.74s    max=4.41s    p(90)=2.54s  p(95)=2.75s  
+    iterations.....................: 5245   95.229583/s
+    vus............................: 1      min=1          max=200
+    vus_max........................: 200    min=200        max=200
+    NETWORK
+    data_received..................: 810 MB 15 MB/s
+    data_sent......................: 1.1 MB 21 kB/s
+doscientos_usuarios ✓ [ 100% ] 000/200 VUs  55s
+time="2026-11-11T16:47:43-05:00" level=error msg="thresholds on metrics 'http_req_duration{endpoint:alertas}' have been crossed"
