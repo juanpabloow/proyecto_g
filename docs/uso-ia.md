@@ -144,6 +144,44 @@ contraseñas", pedimos agregar un inicio de sesión básico.
 endpoints de Actuator comprobados, k6 con 0 % de errores, y el CI de GitHub
 Actions corriendo la suite completa sobre PostgreSQL real.
 
+## Declaración de la entrega final: cierre de seguridad y RNF (11/11/2026)
+
+Usamos **Claude (Anthropic)**, desde nuestros computadores. Primero le
+pedimos una auditoría de solo lectura contra el checklist de clase del 28 de
+octubre y luego le pedimos cerrar los huecos con cambios pequeños, en una
+rama con un commit por tarea y un Pull Request que revisamos antes de
+fusionar.
+
+**En qué nos ayudó la IA:**
+
+- Auditar el proyecto y encontrar, con evidencia, lo que el documento de
+  seguridad afirmaba y ya no era cierto: el script de k6 sin autenticación,
+  `/actuator/prometheus` abierto, el 401 sin cabeceras, el superusuario de la
+  base y el texto de A04.
+- Arreglar el script de k6 para que se autentique, escribir el generador de
+  datos con semilla fija y ejecutar la medición con 200 usuarios. Encontró
+  que con HTTP Basic en cada petición el p95 no cumple, por el costo de
+  BCrypt, y lo reportamos así en lugar de esconderlo.
+- Medir las consultas SQL con `EXPLAIN ANALYZE` sobre 5.000 contratos.
+- Cerrar Actuator salvo `health`, mover las cabeceras a Spring Security para
+  que también salgan en los 401, dejar la credencial demo solo en el perfil
+  de desarrollo y publicar los puertos de Docker solo en `127.0.0.1`, con sus
+  pruebas.
+- Reescribir `seguridad-y-rnf.md` (superficie de entrada, datos sensibles,
+  RNF de los ocho atributos, OWASP estricto y deuda al cierre) y escribir y
+  **ejecutar** el guion [demo-entrega-final.md](demo-entrega-final.md).
+
+**Lo que decidimos nosotros:**
+
+- El alcance: dejar fuera los roles, el usuario de base de datos sin
+  superusuario, CSRF, el límite de intentos de login, HTTPS y el cifrado en
+  reposo, y documentarlos como deuda.
+- La regla de que nada quede como "cumple" si no se puede demostrar en vivo.
+- Revisar el Pull Request antes de fusionarlo.
+
+**Verificación:** suite completa de 88 pruebas en verde contra PostgreSQL
+real, y cada demostración del guion ejecutada desde una base limpia.
+
 ## Qué no se hizo con IA
 - Las decisiones de alcance (qué señal cubrir primero, qué queda fuera
   del MVP) fueron discutidas y decididas por el equipo.

@@ -75,6 +75,18 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- Las pruebas corren con el perfil de desarrollo (credencial DEMO,
+                 application-dev.properties). Fuera de él la aplicación exige
+                 DAC_AUTH_USER y DAC_AUTH_PASSWORD. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>dev</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

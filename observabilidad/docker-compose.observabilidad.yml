@@ -1,22 +1,35 @@
 # Stack OPCIONAL de observabilidad para DAC: Prometheus + Grafana.
-# Requiere el servidor DAC corriendo en el host (http://localhost:8080) con
-# /actuator/prometheus expuesto (ver application.properties).
+# Requiere el servidor DAC corriendo en el host (http://localhost:8080).
+# /actuator/prometheus exige autenticación: Prometheus usa DAC_AUTH_USER y
+# DAC_AUTH_PASSWORD del .env de la raíz; Grafana, GRAFANA_ADMIN_PASSWORD.
 #
-#   docker compose -f observabilidad/docker-compose.observabilidad.yml up -d
-#   Prometheus -> http://localhost:9090
-#   Grafana    -> http://localhost:3000   (usuario: admin, clave: admin)
-#   Parar:  docker compose -f observabilidad/docker-compose.observabilidad.yml down
+#   docker compose --env-file .env -f observabilidad/docker-compose.observabilidad.yml up -d
+#   Prometheus -> http://localhost:9090   (Status → Targets: dac debe estar UP)
+#   Grafana    -> http://localhost:3000   (usuario admin, clave GRAFANA_ADMIN_PASSWORD)
+#   Parar:  docker compose --env-file .env -f observabilidad/docker-compose.observabilidad.yml down
 #
-# Grafana arranca con Prometheus ya configurado como fuente de datos
-# (observabilidad/grafana/provisioning/).
+# Si DAC corre en otro puerto: agrega DAC_TARGET=host.docker.internal:8090 al .env.
+# Los puertos se publican solo en 127.0.0.1 (no quedan expuestos a la red).
 services:
   prometheus:
     image: prom/prometheus:v2.54.1
     container_name: dac_prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
+    environment:
+      DAC_AUTH_USER: "${DAC_AUTH_USER:?Falta DAC_AUTH_USER: usa --env-file .env}"
+      DAC_AUTH_PASSWORD: "${DAC_AUTH_PASSWORD:?Falta DAC_AUTH_PASSWORD: usa --env-file .env}"
+      DAC_TARGET: "${DAC_TARGET:-host.docker.internal:8080}"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus.plantilla.yml:/etc/prometheus/prometheus.plantilla.yml:ro
+    # Arma la configuración real desde la plantilla y arranca Prometheus.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        printf '%s' "$$DAC_AUTH_PASSWORD" > /tmp/dac_password
+        sed -e "s|__DAC_AUTH_USER__|$$DAC_AUTH_USER|" -e "s|__DAC_TARGET__|$$DAC_TARGET|" \
+          /etc/prometheus/prometheus.plantilla.yml > /tmp/prometheus.yml
+        exec /bin/prometheus --config.file=/tmp/prometheus.yml --storage.tsdb.path=/prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -24,10 +37,10 @@ services:
     image: grafana/grafana:11.2.0
     container_name: dac_grafana
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?Falta GRAFANA_ADMIN_PASSWORD: usa --env-file .env}"
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro

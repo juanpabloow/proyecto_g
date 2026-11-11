@@ -50,7 +50,7 @@ class ContratoE2ETest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String RUTA = "/api/contratos/cargar";
-    private static final String USUARIO = "analista";       // credencial DEMO (ver application.properties)
+    private static final String USUARIO = "analista";       // credencial DEMO del perfil dev (application-dev.properties)
     private static final String CLAVE = "dac-demo-2026";
 
     @Autowired

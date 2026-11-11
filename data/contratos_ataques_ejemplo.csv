@@ -1,0 +1,5 @@
+numero_contrato,entidad,contratista,funcionario,monto,fecha
+901,Entidad de Prueba,x'); DROP TABLE contrato; --,' OR '1'='1,1000000,2026-07-01
+902,Entidad de Prueba,x'); DROP TABLE contrato; --,' OR '1'='1,2000000,2026-07-02
+903,Entidad de Prueba,<script>alert(1)</script>,<img src=x onerror=alert(2)>,1000000,2026-07-03
+904,Entidad de Prueba,<script>alert(1)</script>,<img src=x onerror=alert(2)>,2000000,2026-07-04

@@ -59,8 +59,7 @@ jobs:
           fi
 
       - name: Correr las pruebas (dominio, punta a punta, seguridad y RNF)
-        working-directory: java
-        run: mvn -B test
+        run: ./mvnw -B verify
 
       - name: Publicar la medición de los RNF
         if: always()

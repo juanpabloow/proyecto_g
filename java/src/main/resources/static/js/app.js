@@ -2,7 +2,7 @@
 // las pruebas (POST /api/contratos/cargar, GET /api/alertas).
 // Seguridad: todo dato que viene del CSV se inserta con textContent, nunca
 // como HTML, para que un nombre como <script> no se ejecute (S-04). No hay
-// estilos ni scripts en línea: todo respeta la CSP de CabecerasDeSeguridad.
+// estilos ni scripts en línea: todo respeta la CSP de SeguridadWeb.
 (function () {
   "use strict";
 

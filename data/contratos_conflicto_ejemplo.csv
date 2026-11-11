@@ -1,0 +1,4 @@
+numero_contrato,entidad,contratista,funcionario,monto,fecha
+001,Alcaldía de Ejemplo,ACME SAS,Juan Pérez,55000000,2026-01-15
+601,Alcaldía de Ejemplo,Servicios Andinos SAS,Laura Díaz,15000000,2026-06-01
+601,Alcaldía de Ejemplo,Servicios Andinos SAS,Laura Díaz,18000000,2026-06-03

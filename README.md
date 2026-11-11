@@ -38,7 +38,7 @@ una alerta es una hipótesis a verificar por una persona
 - Las filas incompletas se descartan y se reportan (HU-04).
 - **Interfaz web** en http://localhost:8080 para cargar el CSV, ver las
   alertas con su evidencia y **exportar el reporte** a Excel (HU-08).
-- **82 pruebas automatizadas:** 56 de dominio y 26 de punta a punta por
+- **88 pruebas automatizadas:** 59 de dominio y 29 de punta a punta por
   HTTP real contra PostgreSQL, incluidas pruebas de ataques simulados y la
   medición de los dos requisitos no funcionales. Corren solas en cada Pull
   Request (GitHub Actions).
@@ -54,56 +54,76 @@ implementación paralela en Python se consolidó aquí
 
 ## Cómo correrlo
 
-Requiere **Docker**, **JDK 21+** y **Maven**. Los ejemplos con `curl`
-canalizan la respuesta a [`jq`](https://jqlang.github.io/jq/) solo para
-leerla formateada: si no lo tienes, quita el `| jq` y el comando funciona
-igual.
-
-### 1. Levantar la base de datos
-
-La primera vez, crea tu archivo de secretos y cambia la clave:
+Requiere **Docker** y **JDK 21 o superior**. Maven **no** hace falta: el
+Maven Wrapper (`./mvnw`, o `mvnw.cmd` en Windows) descarga la versión
+correcta la primera vez. Todos los comandos se corren desde la **raíz del
+proyecto**.
 
 ```bash
-cp .env.example .env
+cp .env.example .env        # 1. secretos locales: edítalo y cambia las claves
+docker compose up -d        # 2. PostgreSQL 16 y el visor web de la base
+./mvnw spring-boot:run      # 3. DAC en http://localhost:8080 (deja esta terminal abierta)
+./mvnw verify               # 4. en otra terminal: compila y corre las 88 pruebas
 ```
 
-`.env` no se sube al repositorio (está en `.gitignore`). Lo leen Docker y
-la aplicación ([Decisión 24](docs/decisiones-tecnicas.md)).
+### 1. El archivo `.env`
+
+`.env` no se sube al repositorio (está en `.gitignore`). Lo leen Docker y la
+aplicación: `./mvnw spring-boot:run` lo carga solo, no hay que exportar nada
+([Decisión 24](docs/decisiones-tecnicas.md)). Variables:
+
+| Variable | Para qué | ¿Obligatoria? |
+|---|---|---|
+| `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Usuario y clave de PostgreSQL | Sí |
+| `DAC_AUTH_USER`, `DAC_AUTH_PASSWORD` | Usuario y clave para **entrar a DAC** (pantalla de login y API) | Sí. Si faltan, la aplicación no arranca y dice qué definir |
+| `GRAFANA_ADMIN_PASSWORD` | Clave del usuario `admin` de Grafana | Solo para la observabilidad opcional |
+
+No hay credencial por defecto. Solo el perfil de desarrollo trae una
+credencial demo para probar en tu computador:
+`./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` entra con
+`analista` / `dac-demo-2026`. Nunca lo uses con datos reales.
+
+### 2. La base de datos
+
+`docker compose up -d` levanta PostgreSQL 16 en `localhost:5433` y un visor
+web en `localhost:8081`, publicados **solo en 127.0.0.1**. La primera vez
+crea las 6 tablas desde [db/schema.sql](db/schema.sql) y siembra 5 contratos
+de ejemplo desde [db/datos.sql](db/datos.sql). Para mirar lo que hay
+adentro, ve a [Ver los datos](#ver-los-datos).
+
+> Si ya tenías la base creada con otra clave, pon esa misma clave en `.env`
+> o borra el volumen con `docker compose down -v`.
+
+### 3. El servidor y cómo entrar
+
+`./mvnw spring-boot:run` deja la terminal ocupada; `Ctrl+C` lo detiene.
+Abre **http://localhost:8080**: te lleva a la pantalla de login. Entra con
+el `DAC_AUTH_USER` y el `DAC_AUTH_PASSWORD` de tu `.env`. Para otro puerto:
+`SERVER_PORT=8090 ./mvnw spring-boot:run`.
+
+Para los ejemplos con `curl`, carga tus variables en esa otra terminal:
 
 ```bash
-docker compose up -d
+set -a; source .env; set +a
 ```
 
-> Si ya tenías la base creada con la clave anterior (`dac_pass`), pon esa
-> misma clave en `.env`, o borra el volumen con `docker compose down -v`.
+Los ejemplos canalizan la respuesta a [`jq`](https://jqlang.github.io/jq/)
+solo para leerla formateada: si no lo tienes, quita el `| jq`.
 
-PostgreSQL 16 en `localhost:5433` y un visor web en `localhost:8081`.
-La primera vez crea las 6 tablas desde [db/schema.sql](db/schema.sql) y
-siembra datos de ejemplo desde [db/datos.sql](db/datos.sql).
+### Pruebas
 
-Para mirar lo que hay adentro, ve a [Ver los datos](#ver-los-datos).
+`./mvnw verify` necesita la base corriendo. Esperado:
+`Tests run: 88, Failures: 0, Errors: 0, Skipped: 0` y `BUILD SUCCESS`. Las
+59 de dominio no usan la base. Las 29 de punta a punta sí, y **vacían sus
+tablas** (`TRUNCATE`): no las corras sobre datos que quieras conservar.
 
-### 2. Correr las pruebas
+`java/ejecutar.sh` sigue existiendo como atajo (`run`, `dev`, `build`) sobre
+los mismos comandos del wrapper.
 
-```bash
-cd java && mvn test
-```
+### Usarlo
 
-Esperado: `Tests run: 82, Failures: 0, Errors: 0`. Las 56 de dominio no
-necesitan la base; las 26 de punta a punta sí.
-
-### 3. Levantar el servidor
-
-```bash
-java/ejecutar.sh
-```
-
-Queda ocupada la terminal. `Ctrl+C` para pararlo. Abre **otra terminal**
-para los comandos siguientes.
-
-### 4. Usarlo
-
-**Desde el navegador:** abre **http://localhost:8080**, arrastra un CSV
+**Desde el navegador:** abre **http://localhost:8080**, entra con tu
+usuario y clave, arrastra un CSV
 (por ejemplo `data/contratos_ejemplo.csv`) y pulsa **Analizar archivo**.
 Las pestañas muestran las alertas de reincidencia y de fraccionamiento
 con su evidencia, las filas descartadas y los conflictos. El botón
@@ -117,20 +137,26 @@ Para ver cada señal hay un archivo de ejemplo:
 | `data/contratos_incompletos_ejemplo.csv` | Filas descartadas y un duplicado (HU-04) |
 | `data/contratos_nombres_variantes_ejemplo.csv` | El mismo par escrito de tres formas (HU-05) |
 | `data/contratos_fraccionamiento_ejemplo.csv` | 3 contratos que fraccionan 105 millones en 18 días (HU-03) |
+| `data/contratos_conflicto_ejemplo.csv` | Un contrato ya guardado que llega con otro monto y un duplicado con datos distintos (HU-06) |
+| `data/contratos_ataques_ejemplo.csv` | Nombres con inyección SQL y XSS que se guardan y muestran como texto (S-03, S-04) |
 
 **Desde la terminal:**
 
 ```bash
-curl -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
+curl -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" \
+  -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
 ```
+
+Sin `-u` la API responde `401`.
 
 Responde `contratosNuevos`, `totalEnBd`, `duplicadosIgnorados`,
 `filasDescartadas`, `conflictos`, `alertas` y `alertasFraccionamiento`
 con su evidencia. Otros endpoints:
 
 ```bash
-curl http://localhost:8080/api/alertas                       # estado actual
-curl -OJ http://localhost:8080/api/alertas/exportar          # descarga alertas_dac.csv
+curl -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" http://localhost:8080/api/alertas            # estado actual
+curl -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -OJ http://localhost:8080/api/alertas/exportar  # descarga alertas_dac.csv
+curl http://localhost:8080/actuator/health                                              # público: {"status":"UP",...}
 ```
 
 > Los datos de `data/contratos_ejemplo.csv` son **ficticios**. Los
@@ -138,6 +164,11 @@ curl -OJ http://localhost:8080/api/alertas/exportar          # descarga alertas_
 > repositorio.
 
 ## Cómo demostrarlo
+
+> El guion completo de la entrega final, con una demostración por historia,
+> por control de seguridad y por RNF, está en
+> [docs/demo-entrega-final.md](docs/demo-entrega-final.md). Los momentos de
+> abajo son la versión corta.
 
 > ⚠️ **Antes de empezar, reinicia a estado limpio.** El contenedor siembra
 > los mismos 5 contratos que trae el CSV de ejemplo, así que sobre una
@@ -158,7 +189,7 @@ demostración desde cero.
 ### Momento 1 — funciona de punta a punta
 
 ```bash
-curl -s -F archivo=@data/contratos_ejemplo.csv \
+curl -s -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@data/contratos_ejemplo.csv \
   http://localhost:8080/api/contratos/cargar | jq
 ```
 
@@ -171,7 +202,7 @@ de entidades distintas: la señal cruza instituciones (R-3).
 Repite **exactamente el mismo comando**:
 
 ```bash
-curl -s -F archivo=@data/contratos_ejemplo.csv \
+curl -s -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@data/contratos_ejemplo.csv \
   http://localhost:8080/api/contratos/cargar | jq
 ```
 
@@ -183,7 +214,7 @@ de la base de datos ([HU-07](docs/historias-usuario.md)).
 ### Momento 3 — filas incompletas (HU-04)
 
 ```bash
-curl -s -F archivo=@data/contratos_incompletos_ejemplo.csv \
+curl -s -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@data/contratos_incompletos_ejemplo.csv \
   http://localhost:8080/api/contratos/cargar | jq
 ```
 
@@ -196,7 +227,7 @@ invalida por tres filas malas ([Decisión 12](docs/decisiones-tecnicas.md)).
 
 ```bash
 printf 'numero_contrato,entidad\n001,X\n' > /tmp/malo.csv
-curl -s -o /dev/null -w "HTTP %{http_code}\n" -F archivo=@/tmp/malo.csv \
+curl -s -o /dev/null -w "HTTP %{http_code}\n" -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@/tmp/malo.csv \
   http://localhost:8080/api/contratos/cargar
 ```
 
@@ -312,7 +343,7 @@ duro— y `\q` sale.
 | El servidor no arranca | La base está apagada | `docker compose up -d` |
 | `relation ... does not exist` | El volumen quedó a medias | `docker compose down -v && docker compose up -d` |
 | `contratosNuevos: 0` en la primera carga | El contenedor sembró `db/datos.sql` | Reinicia a estado limpio (arriba) |
-| Números distintos a los esperados | `mvn test` dejó otro estado en la base | Reinicia a estado limpio (arriba) |
+| Números distintos a los esperados | `./mvnw verify` dejó otro estado en la base | Reinicia a estado limpio (arriba) |
 | `mvn: command not found` | Terminal abierta antes de instalar Maven | Abre una terminal nueva |
 
 Para borrar **todo**, incluidos los datos, y volver al punto de partida:

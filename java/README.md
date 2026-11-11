@@ -32,16 +32,17 @@ Requiere **JDK 21+**, **Maven** y **Docker**.
 ```bash
 cp .env.example .env         # una sola vez: usuario y clave de la base (no se versiona)
 docker compose up -d db      # PostgreSQL en localhost:5433, esquema y datos aplicados
-cd java && mvn test          # las pruebas de punta a punta contra la BD real
-java/ejecutar.sh             # levanta el endpoint en localhost:8080
+./mvnw verify                # desde la raíz: las 88 pruebas, incluidas las de punta a punta
+./mvnw spring-boot:run       # desde la raíz: levanta DAC en localhost:8080
 ```
 
-`ejecutar.sh` acepta tres acciones:
+`ejecutar.sh` acepta cuatro acciones:
 
 ```bash
-java/ejecutar.sh             # run — inicia el servidor
-java/ejecutar.sh build       # compila y ejecuta las pruebas
-java/ejecutar.sh package     # genera target/dac-0.0.1-SNAPSHOT.jar
+java/ejecutar.sh             # run — inicia el servidor (credencial de .env)
+java/ejecutar.sh dev         # dev — inicia el servidor con la credencial DEMO (solo local)
+java/ejecutar.sh build       # ./mvnw verify: compila y corre la suite completa
+java/ejecutar.sh package     # genera java/target/dac-0.0.1-SNAPSHOT.jar
 ```
 
 Con el servidor arriba:
@@ -63,7 +64,7 @@ usa persistencia real, no una base en memoria.
 ```
 java/
 ├── pom.xml                              Maven: Spring Boot web + JPA + PostgreSQL + JUnit
-├── ejecutar.sh                          run | build | package
+├── ejecutar.sh                          run | dev | build | package
 ├── src/main/resources/
 │   └── application.properties           Conexión a localhost:5433 con usuario y clave de .env; ddl-auto=none (Decisión 15)
 ├── src/main/java/dac/
@@ -95,7 +96,7 @@ java/
 ## Las pruebas
 
 ```bash
-cd java && mvn test     # Tests run: 28, Failures: 0, Errors: 0
+./mvnw verify          # Tests run: 88, Failures: 0, Errors: 0
 ```
 
 **25 son de dominio puro:** no levantan Spring ni tocan la base, corren en
