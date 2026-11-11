@@ -1,0 +1,33 @@
+# k6 run -e AUTH_MODO=sesion rnf/k6-concurrencia.js — corrida 1 de 3 (DESCARTADA según el protocolo) — 2026-11-11, commit 778634a, Apple M4 Pro (12 núcleos), 1.200 contratos (semilla 2026)
+  █ THRESHOLDS 
+    http_req_duration{endpoint:alertas}
+    ✓ 'p(95)<1500' p(95)=732.31ms
+    http_req_duration{endpoint:pagina}
+    ✓ 'p(95)<500' p(95)=2.18ms
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+  █ TOTAL RESULTS 
+    checks_total.......: 87348   1587.889083/s
+    checks_succeeded...: 100.00% 87348 out of 87348
+    checks_failed......: 0.00%   0 out of 87348
+    ✓ login -> 200
+    ✓ alertas -> 200
+    ✓ alertas -> JSON
+    ✓ alertas -> no-store
+    ✓ pagina -> 200
+    HTTP
+    http_req_duration..............: avg=193.74ms min=265µs   med=12.9ms   max=2.01s   p(90)=489.03ms p(95)=530.03ms
+      { endpoint:alertas }.........: avg=389.33ms min=11.65ms med=450.39ms max=2.01s   p(90)=530.45ms p(95)=732.31ms
+      { endpoint:pagina }..........: avg=1ms      min=265µs   med=800µs    max=26.53ms p(90)=1.64ms   p(95)=2.18ms  
+      { expected_response:true }...: avg=193.74ms min=265µs   med=12.9ms   max=2.01s   p(90)=489.03ms p(95)=530.03ms
+    http_req_failed................: 0.00%  0 out of 43974
+    http_reqs......................: 43974  799.398206/s
+    EXECUTION
+    iteration_duration.............: avg=391.15ms min=12.22ms med=451.53ms max=2.01s   p(90)=531.9ms  p(95)=733.87ms
+    iterations.....................: 21787  396.063327/s
+    vus............................: 1      min=1          max=200
+    vus_max........................: 200    min=200        max=200
+    NETWORK
+    data_received..................: 3.4 GB 61 MB/s
+    data_sent......................: 5.9 MB 107 kB/s
+doscientos_usuarios ✓ [ 100% ] 000/200 VUs  55s

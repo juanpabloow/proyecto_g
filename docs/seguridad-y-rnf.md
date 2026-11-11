@@ -117,82 +117,116 @@ es el problema duro del proyecto:
 | Deployability | RNF-7 | Arranque desde cero del guion de demostración | ⚠️ Parcial |
 | Extensibility | RNF-8 | Revisión de código | ⚠️ Parcial |
 
+**Protocolo de medición (convención del curso):** tres corridas, se
+descarta la primera (incluye el arranque en frío) y se informan la 2 y la 3,
+con la fecha, el commit y las condiciones del equipo. RNF-1 y RNF-2 los
+aplica `RequisitosNoFuncionalesTest`, que escribe
+`java/target/rnf/resultados.md` en cada `./mvnw verify` (en el CI, en el
+*Summary* de la ejecución). RNF-3 se corre a mano con k6.
+
+**Condiciones del equipo local** (todas las mediciones del 11/11/2026):
+Apple M4 Pro, 12 núcleos, macOS, Java 26.0.1, 6.144 MB para la JVM,
+PostgreSQL 16 en Docker en la misma máquina, servidor Spring Boot con el
+pool de conexiones por defecto (10). El código de la aplicación medido es el
+del commit `778634a`; RNF-1 y RNF-2 se midieron con la prueba de esta
+entrega, que agrega el protocolo.
+
 ### RNF-1 — Rendimiento de la carga ✅
 
-| | |
+| Campo | Valor |
 |---|---|
-| **Escenario** | El analista carga un archivo de **5.000 contratos** |
-| **Objetivo** | La respuesta, con las dos señales calculadas, llega en **5 segundos o menos** |
-| **Método** | `RequisitosNoFuncionalesTest`: por HTTP real, 1 carga de calentamiento y 3 medidas con la base vacía antes de cada una; se toma la **peor**. Datos ficticios con semilla fija (346 KB) |
-| **Resultado (CI, 28/10/2026)** | Runner `ubuntu-24.04`, 4 núcleos, Java 21: 2.156 · 1.578 · 1.481 ms. **Peor: 2.156 ms** (43 % del límite) |
-| **Resultado (local, 11/11/2026)** | Apple M4 Pro, Java 26: 1.975 · 2.015 · 1.331 ms. **Peor: 2.015 ms** |
+| **Operación evaluada** | `POST /api/contratos/cargar` por HTTP real, desde que se envía el archivo hasta recibir la respuesta con las dos señales calculadas |
+| **Objetivo** | ≤ **5.000 ms** |
+| **Métrica** | Tiempo de respuesta de la peor de las corridas 2 y 3 |
+| **Carga** | 1 archivo, 1 usuario, base vacía antes de cada corrida |
+| **Conjunto de datos** | 5.000 contratos ficticios generados con semilla fija (2026): 346 KB, 20 entidades, 600 contratistas, 250 funcionarios; producen 103 alertas |
+| **Condiciones** | Equipo local (arriba), 11/11/2026 |
+| **Corrida 1 (descartada)** | 2.067 ms |
+| **Corrida 2** | **1.509 ms** |
+| **Corrida 3** | **1.402 ms** |
+| **Resultado** | ✅ Cumple: la peor es 1.509 ms (30 % del límite) |
+
+La medición anterior, en el CI del 28/10/2026 (runner `ubuntu-24.04`, 4
+núcleos, Java 21), usó otro método: una carga de calentamiento y 3 medidas,
+con la peor en 2.156 ms. Desde esta entrega el CI aplica el protocolo de
+tres corridas en cada ejecución.
 
 **Hallazgo y corrección:** el servicio hacía varias consultas por cada fila
-y cada una obligaba a Hibernate a revisar todo lo cargado: el tiempo crecía
-más que la cantidad de filas. Ahora se lee lo existente **una sola vez**
-([Decisión 25](decisiones-tecnicas.md)).
+y cada una obligaba a Hibernate a revisar todo lo cargado. Ahora se lee lo
+existente **una sola vez** ([Decisión 25](decisiones-tecnicas.md)).
 
 ![RNF-1](seguridad/rnf-1-rendimiento.svg)
 
 ### RNF-2 — Integridad ante recargas (idempotencia) ✅
 
-| | |
+| Campo | Valor |
 |---|---|
-| **Escenario** | El mismo archivo de **1.000 contratos** se carga **10 veces seguidas** |
-| **Objetivo** | **0 duplicados en 10 de 10** recargas: mismos contratos, alertas y filas de evidencia que tras la primera |
-| **Método** | `RequisitosNoFuncionalesTest` cuenta `contrato`, `alerta` y `alerta_contrato` después de cada recarga |
-| **Resultado (CI 28/10 y local 11/11)** | Tras la 1.ª carga: 1.000 contratos, 4 alertas, 8 filas de evidencia. En las 10 recargas: **0 contratos nuevos**, cantidades iguales en **10 de 10** |
+| **Operación evaluada** | Cargar un archivo y recargarlo 10 veces seguidas por HTTP real |
+| **Objetivo** | 0 contratos nuevos en las recargas y **10 de 10** recargas sin ningún cambio en `contrato`, `alerta` y `alerta_contrato` |
+| **Métrica** | Contratos nuevos en las recargas; recargas sin cambios en las tres tablas |
+| **Carga** | 1 carga + 10 recargas del mismo archivo, 1 usuario, base vacía al empezar cada corrida |
+| **Conjunto de datos** | 1.000 contratos ficticios, semilla 7: producen 4 alertas y 8 filas de evidencia |
+| **Condiciones** | Equipo local (arriba), 11/11/2026 |
+| **Corrida 1 (descartada)** | 0 nuevos; 10 de 10 sin cambios |
+| **Corrida 2** | **0 nuevos; 10 de 10 sin cambios** |
+| **Corrida 3** | **0 nuevos; 10 de 10 sin cambios** |
+| **Resultado** | ✅ Cumple. La prueba exige la integridad también en la corrida 1 |
 
 ![RNF-2](seguridad/rnf-2-integridad.svg)
 
 ### RNF-3 — Escalabilidad ante usuarios concurrentes
 
-| | |
+| Campo | Valor |
 |---|---|
-| **Escenario** | **200 usuarios** consultando a la vez el estado del sistema (`GET /api/alertas`, que recalcula las dos señales sobre todo el histórico), más la página de login como línea base |
-| **Datos** | **1.200 contratos ficticios** generados con semilla fija por `rnf/k6-cargar-datos.js` (producen 248 reincidencias y 13 fraccionamientos) |
+| **Operación evaluada** | `GET /api/alertas` (recalcula las dos señales sobre todo el histórico; 148 KB por respuesta con estos datos), con `GET /login.html` como línea base |
 | **Objetivo** | Menos del **1 %** de errores y **p95 ≤ 1.500 ms** en `/api/alertas` |
-| **Método** | [k6](https://k6.io) (`rnf/k6-concurrencia.js`): sube a 200 usuarios en 15 s, los sostiene 30 s y baja en 10 s. Solo lecturas |
-| **Condiciones** | 11/11/2026, local: Apple M4 Pro (12 núcleos), servidor Spring Boot con el pool de conexiones por defecto (10), PostgreSQL 16 en contenedor |
+| **Métrica** | p95 de `http_req_duration{endpoint:alertas}` y `http_req_failed` de k6 |
+| **Carga** | 200 usuarios virtuales: suben en 15 s, se sostienen 30 s y bajan en 10 s (`rnf/k6-concurrencia.js`). Modo **sesión**: cada usuario inicia sesión una vez, como el analista en el navegador |
+| **Conjunto de datos** | 1.200 contratos ficticios, semilla 2026 (`rnf/k6-cargar-datos.js`): producen 248 reincidencias y 13 fraccionamientos |
+| **Condiciones** | Equipo local (arriba), k6 v2.3.0 en la misma máquina, 11/11/2026 entre las 18:03 y las 18:06 (UTC−5), commit `778634a` |
 
-| Modo de autenticación | Peticiones | Errores | p95 `/api/alertas` | p95 página | Resultado |
+| Corrida | Peticiones | Errores | p95 `/api/alertas` | Promedio | p95 página |
 |---|---|---|---|---|---|
-| **Sesión** (`AUTH_MODO=sesion`): cada usuario inicia sesión una vez y usa la cookie, como el analista en el navegador | 46.672 (849/s) | **0 %** | **777 ms** | 9 ms | ✅ **Cumple** |
-| **Basic en cada petición** (por defecto), como un cliente programático | 10.490 (190/s) | **0 %** | **2,72 s** | 42 ms | ❌ **No cumple** el p95 |
+| 1 (descartada) | 43.974 (799/s) | 0 % | 732 ms | 389 ms | 2,2 ms |
+| **2** | **43.662 (794/s)** | **0 %** | **567 ms** | 392 ms | 2,0 ms |
+| **3** | **42.192 (767/s)** | **0 %** | **761 ms** | 406 ms | 2,3 ms |
 
-**Hallazgo:** con HTTP Basic, Spring Security verifica el hash BCrypt en
-**cada** petición, y eso cuesta CPU de forma deliberada. En una prueba
-secuencial de 20 peticiones, una con Basic tardó 87 ms en promedio y una con
-sesión 19 ms. Con 200 usuarios a la vez ese costo domina: el p95 pasa de
-777 ms a 2,72 s. El analista usa la pantalla con sesión, así que el
-escenario real cumple. Un cliente que use Basic de forma masiva no cumple, y
-queda como deuda ([sección 7](#7-deuda-conocida-al-cierre)). La medición
-anterior, del 4/11 y sin inicio de sesión, dio un p95 de 771 ms. Coincide
-con el modo sesión de hoy.
+**Resultado:** ✅ **Cumple** en las corridas 2 y 3 (p95 máximo 761 ms, 51 %
+del límite; 0 errores).
 
-**Evidencia:** `docs/seguridad/k6-resumen-sesion.json` y
-`docs/seguridad/k6-resumen.json` (`--summary-export`), con la salida legible
-en `docs/seguridad/k6-salida-sesion.txt` y `docs/seguridad/k6-salida.txt`.
-Cómo repetirla: [demo-entrega-final.md](demo-entrega-final.md), demostración 15.
+**Variante informativa, con HTTP Basic en cada petición** (una sola corrida
+del 11/11, fuera del protocolo): 10.490 peticiones, 0 % de errores, p95 de
+**2,72 s**: ❌ **no cumple**. Spring Security verifica el hash BCrypt en
+**cada** petición. En una prueba secuencial de 20 peticiones, una con Basic
+tardó 87 ms en promedio y una con sesión 19 ms. El analista usa sesión, así
+que el escenario real cumple. Un cliente masivo con Basic no cumple: es la
+deuda [DT-17](deuda-tecnica.md).
+
+**Evidencia:** `docs/seguridad/k6-sesion-corrida-{1,2,3}.json` (`--summary-export`)
+y `.txt` (salida legible); la variante Basic, en
+`docs/seguridad/k6-basic-informativa.*`. Cómo repetirla:
+[demo-entrega-final.md](demo-entrega-final.md), demostración 15.
 
 ### Tiempos de las consultas SQL (EXPLAIN ANALYZE)
 
-Para saber si la base es el cuello de botella, se midieron con
-`EXPLAIN (ANALYZE, BUFFERS)` las dos consultas de lectura de DAC, con el SQL
-equivalente al que genera Hibernate y **5.000 contratos** ficticios en la base
-(20 entidades, 600 contratistas, 250 funcionarios; `rnf/k6-cargar-datos.js`,
-semilla 2026). Cada consulta se corrió 3 veces.
+| Campo | Valor |
+|---|---|
+| **Operación evaluada** | Las dos consultas de lectura de DAC, con el SQL equivalente al que genera Hibernate |
+| **Métrica** | `Execution Time` de `EXPLAIN (ANALYZE, BUFFERS)` |
+| **Carga** | Una consulta a la vez, 3 corridas seguidas; se descarta la primera (caché fría) |
+| **Conjunto de datos** | 5.000 contratos ficticios (20 entidades, 600 contratistas, 250 funcionarios; `rnf/k6-cargar-datos.js`, semilla 2026) |
+| **Condiciones** | PostgreSQL 16.14 en Docker, equipo local, 11/11/2026, commit `538e408` |
 
-| Consulta | Plan | Tiempo de ejecución (3 corridas) |
-|---|---|---|
-| `ContratoRepo.findAllConFetch()` — todos los contratos con entidad, contratista y funcionario | 3 *hash joins* + lectura secuencial de `contrato` + orden por id (en memoria, 1 MB) | **2,97 · 2,46 · 2,34 ms** (planificación 0,50 · 0,15 · 0,11 ms) |
-| `findByNumeroContratoAndEntidad` — búsqueda por clave natural (R-2), con parámetros | *Index Scan* sobre `uq_contrato_clave_natural`, 1 fila, 3 páginas leídas | **0,016 · 0,004 · 0,009 ms** |
+| Consulta | Plan | Corrida 1 (descartada) | Corrida 2 | Corrida 3 |
+|---|---|---|---|---|
+| `ContratoRepo.findAllConFetch()`: todos los contratos con entidad, contratista y funcionario | 3 *hash joins* + lectura secuencial de `contrato` + orden por id (en memoria, 1 MB) | 2,97 ms | **2,46 ms** | **2,34 ms** |
+| `findByNumeroContratoAndEntidad`: búsqueda por clave natural (R-2), con parámetros | *Index Scan* sobre `uq_contrato_clave_natural`, 1 fila, 3 páginas leídas | 0,016 ms | **0,004 ms** | **0,009 ms** |
 
 - **Conclusión:** el SQL no es el cuello de botella. Leer los 5.000 contratos
-  cuesta unos 3 ms; el resto del tiempo de `GET /api/alertas` (cientos de ms
-  bajo carga, RNF-3) se va en recalcular las dos señales en Java y en armar
-  el JSON. Por eso la mejora propuesta es cachear o precalcular las alertas
-  (DT-01), no agregar índices.
+  cuesta unos 2,5 ms; el resto del tiempo de `GET /api/alertas` (cientos de
+  ms bajo carga, RNF-3) se va en recalcular las dos señales en Java y en
+  armar el JSON. Por eso la mejora propuesta es cachear o precalcular las
+  alertas (DT-01), no agregar índices.
 - La clave natural usa el índice único que ya garantiza la idempotencia: la
   misma restricción sirve para integridad y para rendimiento.
 - La lectura secuencial en `findAllConFetch` es lo correcto: la consulta pide
@@ -338,7 +372,7 @@ Aquí solo se enlaza la que toca seguridad y RNF:
   checklist inicial, ataques simulados, RNF-1 y RNF-2 con gráficas (registro
   histórico de esas semanas).
 - **Entrega final (11/11/2026):**
-  - k6: `seguridad/k6-resumen.json`, `seguridad/k6-resumen-sesion.json` y su salida legible (`seguridad/k6-salida*.txt`).
+  - k6: `seguridad/k6-sesion-corrida-{1,2,3}.json` y `.txt` (protocolo de tres corridas) y la variante Basic en `seguridad/k6-basic-informativa.*`.
   - SQL: `seguridad/explain-analyze.txt` y el script `rnf/explain-analyze.sql`.
   - Pruebas nuevas: `SeguridadE2ETest` (401 con cabeceras, cabeceras sin duplicar, Actuator) y `CredencialDelAnalistaTest`.
   - Guion ejecutado: [demo-entrega-final.md](demo-entrega-final.md).

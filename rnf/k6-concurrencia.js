@@ -21,8 +21,11 @@
 //   1. Base limpia (ver README → "Reiniciar a estado limpio").
 //   2. set -a; source .env; set +a
 //   3. k6 run -e CONTRATOS=1200 rnf/k6-cargar-datos.js      # datos con semilla fija
-//   4. k6 run --summary-export docs/seguridad/k6-resumen.json rnf/k6-concurrencia.js
-//      k6 run -e AUTH_MODO=sesion --summary-export docs/seguridad/k6-resumen-sesion.json rnf/k6-concurrencia.js
+//   4. Protocolo del curso: tres corridas, se descarta la primera:
+//      for n in 1 2 3; do
+//        k6 run -e AUTH_MODO=sesion --summary-export docs/seguridad/k6-sesion-corrida-$n.json rnf/k6-concurrencia.js
+//      done
+//   (Modo basic, informativo: k6 run --summary-export docs/seguridad/k6-basic-informativa.json rnf/k6-concurrencia.js)
 //
 // Objetivo (umbral que hace fallar la prueba si no se cumple):
 //   - menos del 1 % de peticiones con error

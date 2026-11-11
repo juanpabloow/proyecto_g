@@ -53,14 +53,19 @@ sistema inventaría la señal que promete detectar, contra una persona real.
 
 ## 3. Métricas reales y sus condiciones
 
-| Qué | Resultado | Condiciones |
-|---|---|---|
-| RNF-1: cargar 5.000 contratos, con las dos señales calculadas | Peor corrida **2.156 ms** (objetivo: ≤ 5.000 ms) | CI, 28/10/2026, `ubuntu-24.04`, 4 núcleos, Java 21, PostgreSQL 16; datos ficticios de semilla fija |
-| RNF-2: 10 recargas del mismo archivo de 1.000 contratos | **0 duplicados en 10 de 10** | Mismo CI y método |
-| RNF-3: 200 usuarios a la vez en `GET /api/alertas`, con sesión | p95 **777 ms**, **0 %** de errores (objetivo: p95 ≤ 1.500 ms, < 1 %) | k6, 11/11/2026, Apple M4 Pro, 1.200 contratos de semilla fija |
-| RNF-3 con HTTP Basic en cada petición | p95 **2,72 s**, 0 % de errores: **no cumple** | Mismas condiciones. Causa: BCrypt en cada petición ([DT-17](deuda-tecnica.md)) |
-| SQL con 5.000 contratos (EXPLAIN ANALYZE) | `findAllConFetch` 2,3–3,0 ms; búsqueda por clave natural < 0,02 ms (Index Scan) | PostgreSQL 16 en Docker, 11/11/2026 |
-| Suite automática | **88 pruebas, 0 fallos** | `./mvnw verify` y GitHub Actions |
+Protocolo del curso: tres corridas, se descarta la primera y se informan
+la 2 y la 3. Todas las mediciones son del 11/11/2026, en un Apple M4 Pro
+(12 núcleos, Java 26, PostgreSQL 16 en Docker), sobre el código del commit
+`778634a`.
+
+| Qué | Corridas 2 y 3 | Objetivo | Datos y carga |
+|---|---|---|---|
+| RNF-1: cargar 5.000 contratos, con las dos señales calculadas | **1.509 ms** y **1.402 ms** | ≤ 5.000 ms | 5.000 contratos ficticios (semilla 2026), 1 usuario, base vacía |
+| RNF-2: 10 recargas del mismo archivo | **0 nuevos, 10 de 10 sin cambios** en las dos | 0 duplicados | 1.000 contratos ficticios (semilla 7) |
+| RNF-3: 200 usuarios a la vez en `GET /api/alertas`, con sesión | p95 **567 ms** y **761 ms**; **0 %** de errores | p95 ≤ 1.500 ms, < 1 % de errores | k6, 1.200 contratos (semilla 2026) |
+| RNF-3 con HTTP Basic en cada petición (una corrida, informativa) | p95 **2,72 s**, 0 % de errores: **no cumple** | Ídem | Causa: BCrypt en cada petición ([DT-17](deuda-tecnica.md)) |
+| SQL con 5.000 contratos (EXPLAIN ANALYZE) | `findAllConFetch` **2,46** y **2,34 ms**; clave natural **0,004** y **0,009 ms** (Index Scan) | — | PostgreSQL 16 en Docker |
+| Suite automática | Ver `./mvnw verify` en el README | 0 fallos | Local y GitHub Actions |
 
 El detalle de cada medición (operación, carga, datos, equipo y corridas)
 está en [seguridad-y-rnf.md](seguridad-y-rnf.md).
