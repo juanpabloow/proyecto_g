@@ -43,9 +43,9 @@ public class ContratoControlador {
         }
         try {
             ResultadoServicio r = servicio.cargarYDetectar(archivo.getInputStream());
-            Auditoria.cargaAceptada(nombre, archivo.getSize(), r.contratosNuevos(), r.totalEnBd(),
-                    r.filasDescartadas().size(), r.conflictos().size(), r.alertas().size(),
-                    r.alertasFraccionamiento().size());
+            Auditoria.cargaAceptada(nombre, archivo.getSize(), r.contratosNuevos(), r.contratosYaGuardados(),
+                    r.duplicadosIgnorados(), r.totalEnBd(), r.filasDescartadas().size(), r.conflictos().size(),
+                    r.alertas().size(), r.alertasFraccionamiento().size());
             return ResponseEntity.ok(r);
         } catch (IllegalArgumentException e) {
             return rechazar(nombre, e.getMessage());

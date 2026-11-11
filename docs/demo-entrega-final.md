@@ -142,6 +142,17 @@ docker exec dac_db psql -U dac_user -d dac -tAc "select count(*) from contrato"
 
 → `5`
 
+**Registro auditable** (en la terminal 1, la del servidor): cada carga deja
+una línea, y la recarga se reconoce porque dice `nuevos=0` y todos sus
+contratos en `yaGuardados`:
+
+```
+AUDITORIA carga aceptada archivo="contratos_ejemplo.csv" bytes=406 nuevos=5 yaGuardados=0 duplicadosEnArchivo=0 totalEnBd=5 descartadas=0 conflictos=0 reincidencias=1 fraccionamientos=1
+AUDITORIA carga aceptada archivo="contratos_ejemplo.csv" bytes=406 nuevos=0 yaGuardados=5 duplicadosEnArchivo=0 totalEnBd=5 descartadas=0 conflictos=0 reincidencias=1 fraccionamientos=1
+```
+
+La línea no lleva nombres de personas, solo cantidades (S-07).
+
 ---
 
 ## 5. HU-03 — Fraccionamiento de contratos

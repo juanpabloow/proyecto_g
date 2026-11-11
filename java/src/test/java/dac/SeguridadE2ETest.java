@@ -242,6 +242,28 @@ class SeguridadE2ETest {
     }
 
     @Test
+    @DisplayName("Problema duro auditable: una recarga queda registrada con 0 nuevos y todo ya guardado")
+    void la_recarga_queda_auditada(CapturedOutput salida) throws Exception {
+        String csv = ENCABEZADO
+                + "001,Alcaldía,ACME SAS,Juan Pérez,100,2026-01-01\n"
+                + "002,Alcaldía,ACME SAS,Juan Pérez,100,2026-01-02\n"
+                + "002,Alcaldía,ACME SAS,Juan Pérez,100,2026-01-02\n";
+
+        ResponseEntity<String> primera = enviar("lote.csv", csv);
+        ResponseEntity<String> recarga = enviar("lote.csv", csv);
+
+        assertEquals(0, JSON.readTree(recarga.getBody()).get("contratosNuevos").asInt(), "la recarga no agrega nada");
+        assertEquals(2, JSON.readTree(recarga.getBody()).get("contratosYaGuardados").asInt());
+        assertEquals(2, contratoRepo.count(), "sin efectos duplicados en la base");
+        assertEquals(2, JSON.readTree(primera.getBody()).get("contratosNuevos").asInt());
+
+        String log = salida.getAll();
+        assertTrue(log.contains("nuevos=2 yaGuardados=0 duplicadosEnArchivo=1"), "la primera carga, auditada");
+        assertTrue(log.contains("nuevos=0 yaGuardados=2 duplicadosEnArchivo=1"), "la recarga, auditada");
+        assertFalse(log.contains("Juan Pérez"), "sin nombres de personas");
+    }
+
+    @Test
     @DisplayName("S-06 secretos: la clave de la base no está escrita en el código")
     void la_clave_no_esta_en_el_codigo() throws Exception {
         String propiedades = new ClassPathResource("application.properties").getContentAsString(StandardCharsets.UTF_8);

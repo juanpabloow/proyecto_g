@@ -149,7 +149,7 @@ curl -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" \
 
 Sin `-u` la API responde `401`.
 
-Responde `contratosNuevos`, `totalEnBd`, `duplicadosIgnorados`,
+Responde `contratosNuevos`, `contratosYaGuardados`, `totalEnBd`, `duplicadosIgnorados`,
 `filasDescartadas`, `conflictos`, `alertas` y `alertasFraccionamiento`
 con su evidencia. Otros endpoints:
 
