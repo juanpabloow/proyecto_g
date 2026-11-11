@@ -1,0 +1,23 @@
+# Prometheus raspa las métricas que publica DAC en /actuator/prometheus.
+# El servidor DAC corre en el host (no en este contenedor), así que se le
+# llega por host.docker.internal.
+#
+# Es una PLANTILLA: /actuator/prometheus exige autenticación, y Prometheus no
+# lee variables de entorno en su configuración. Al arrancar, el contenedor
+# reemplaza __DAC_AUTH_USER__ y __DAC_TARGET__ y escribe la clave en un
+# archivo aparte (password_file), todo desde el .env de la raíz
+# (ver docker-compose.observabilidad.yml).
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: dac
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: __DAC_AUTH_USER__
+      password_file: /tmp/dac_password
+    static_configs:
+      - targets: ["__DAC_TARGET__"]
+        labels:
+          application: dac

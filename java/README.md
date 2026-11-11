@@ -36,10 +36,11 @@ cd java && mvn test          # las pruebas de punta a punta contra la BD real
 java/ejecutar.sh             # levanta el endpoint en localhost:8080
 ```
 
-`ejecutar.sh` acepta tres acciones:
+`ejecutar.sh` acepta cuatro acciones:
 
 ```bash
-java/ejecutar.sh             # run — inicia el servidor
+java/ejecutar.sh             # run — inicia el servidor (credencial de .env)
+java/ejecutar.sh dev         # dev — inicia el servidor con la credencial DEMO (solo local)
 java/ejecutar.sh build       # compila y ejecuta las pruebas
 java/ejecutar.sh package     # genera target/dac-0.0.1-SNAPSHOT.jar
 ```
@@ -63,7 +64,7 @@ usa persistencia real, no una base en memoria.
 ```
 java/
 ├── pom.xml                              Maven: Spring Boot web + JPA + PostgreSQL + JUnit
-├── ejecutar.sh                          run | build | package
+├── ejecutar.sh                          run | dev | build | package
 ├── src/main/resources/
 │   └── application.properties           Conexión a localhost:5433 con usuario y clave de .env; ddl-auto=none (Decisión 15)
 ├── src/main/java/dac/

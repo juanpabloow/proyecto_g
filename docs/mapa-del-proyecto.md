@@ -50,7 +50,7 @@ proyecto_g/
 │
 ├── java/                        Toda la aplicación: Java 21 + Spring Boot (Decisiones 14 y 18)
 │   ├── pom.xml                  Maven: Spring Boot 3.3, JPA, PostgreSQL, JUnit 5
-│   ├── ejecutar.sh              run | build | package
+│   ├── ejecutar.sh              run | dev | build | package
 │   ├── src/main/java/dac/
 │   │   ├── api/                 ContratoControlador — POST /api/contratos/cargar
 │   │   ├── aplicacion/          ContratoServicio — orquesta y delimita la transacción

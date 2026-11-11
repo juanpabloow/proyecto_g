@@ -23,6 +23,8 @@ import org.springframework.security.web.util.matcher.OrRequestMatcher;
  * cualquiera con acceso al puerto 8080 usaba el sistema (deuda DT-03). Ahora
  * hay un único usuario, tomado de la configuración ({@code dac.auth.*}), con
  * la clave guardada como <b>hash BCrypt</b> en memoria, nunca en texto plano.
+ * Fuera del perfil {@code dev} no hay credencial por defecto: si falta, la
+ * aplicación no arranca ({@link #exigirCredencial}).
  *
  * <ul>
  *   <li><b>Formulario</b> ({@code /login.html}) para el analista en el navegador
@@ -66,11 +68,24 @@ public class SeguridadWeb {
     public UserDetailsService usuarios(PasswordEncoder encoder,
                                        @Value("${dac.auth.usuario}") String usuario,
                                        @Value("${dac.auth.clave}") String clave) {
+        exigirCredencial(usuario, clave);
         UserDetails analista = User.withUsername(usuario)
                 .password(encoder.encode(clave)) // se guarda el hash, no la clave
                 .roles("ANALISTA")
                 .build();
         return new InMemoryUserDetailsManager(analista);
+    }
+
+    /**
+     * Sin usuario o sin clave configurados la aplicación no arranca: es mejor
+     * fallar con un mensaje claro que quedar con una credencial conocida.
+     */
+    static void exigirCredencial(String usuario, String clave) {
+        if (usuario == null || usuario.isBlank() || clave == null || clave.isBlank()) {
+            throw new IllegalStateException("Falta la credencial del analista: define DAC_AUTH_USER y "
+                    + "DAC_AUTH_PASSWORD en el archivo .env (o como variables de entorno), "
+                    + "o arranca con el perfil de desarrollo: java/ejecutar.sh dev");
+        }
     }
 
     @Bean

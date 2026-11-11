@@ -37,7 +37,7 @@ class SeguridadE2ETest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String ENCABEZADO = "numero_contrato,entidad,contratista,funcionario,monto,fecha\n";
-    private static final String USUARIO = "analista";       // credencial DEMO (ver application.properties)
+    private static final String USUARIO = "analista";       // credencial DEMO del perfil dev (application-dev.properties)
     private static final String CLAVE = "dac-demo-2026";
 
     @Autowired
@@ -249,6 +249,8 @@ class SeguridadE2ETest {
         assertTrue(propiedades.contains("spring.datasource.password=${DB_PASSWORD}"),
                 "la clave se lee de .env o de una variable de entorno");
         assertFalse(propiedades.contains("dac_pass"), "la clave anterior ya no está en el repositorio");
+        assertFalse(propiedades.contains("dac-demo-2026"),
+                "la credencial demo solo existe en el perfil dev, no en la configuración base");
     }
 
     /** Petición sin credenciales, como la haría un desconocido. */

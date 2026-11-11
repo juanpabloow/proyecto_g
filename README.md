@@ -61,14 +61,22 @@ igual.
 
 ### 1. Levantar la base de datos
 
-La primera vez, crea tu archivo de secretos y cambia la clave:
+La primera vez, crea tu archivo de secretos y **cambia las claves**:
 
 ```bash
 cp .env.example .env
 ```
 
+| Variable | Para qué | ¿Obligatoria? |
+|---|---|---|
+| `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Usuario y clave de PostgreSQL | Sí |
+| `DAC_AUTH_USER`, `DAC_AUTH_PASSWORD` | Usuario y clave para entrar a DAC (pantalla de login y API) | Sí, salvo con el perfil de desarrollo (`java/ejecutar.sh dev`) |
+| `GRAFANA_ADMIN_PASSWORD` | Clave del usuario `admin` de Grafana | Solo si usas la observabilidad |
+
 `.env` no se sube al repositorio (está en `.gitignore`). Lo leen Docker y
-la aplicación ([Decisión 24](docs/decisiones-tecnicas.md)).
+la aplicación ([Decisión 24](docs/decisiones-tecnicas.md)). Si falta la
+credencial del analista, la aplicación **no arranca** y dice qué variable
+definir: no existe una clave por defecto fuera del perfil de desarrollo.
 
 ```bash
 docker compose up -d
@@ -77,7 +85,8 @@ docker compose up -d
 > Si ya tenías la base creada con la clave anterior (`dac_pass`), pon esa
 > misma clave en `.env`, o borra el volumen con `docker compose down -v`.
 
-PostgreSQL 16 en `localhost:5433` y un visor web en `localhost:8081`.
+PostgreSQL 16 en `localhost:5433` y un visor web en `localhost:8081`,
+publicados **solo en 127.0.0.1** (no quedan expuestos a la red local).
 La primera vez crea las 6 tablas desde [db/schema.sql](db/schema.sql) y
 siembra datos de ejemplo desde [db/datos.sql](db/datos.sql).
 
@@ -95,15 +104,27 @@ necesitan la base; las 26 de punta a punta sí.
 ### 3. Levantar el servidor
 
 ```bash
-java/ejecutar.sh
+java/ejecutar.sh          # con la credencial de tu .env (DAC_AUTH_USER / DAC_AUTH_PASSWORD)
+java/ejecutar.sh dev      # perfil de desarrollo: credencial DEMO analista / dac-demo-2026
 ```
 
+Usa **uno** de los dos. El perfil `dev` existe solo para probar en tu
+computador: nunca lo uses con datos reales. Para otro puerto:
+`SERVER_PORT=8090 java/ejecutar.sh`.
+
 Queda ocupada la terminal. `Ctrl+C` para pararlo. Abre **otra terminal**
-para los comandos siguientes.
+para los comandos siguientes y carga ahí tus variables, que usan los
+ejemplos con `curl`:
+
+```bash
+set -a; source .env; set +a
+```
 
 ### 4. Usarlo
 
-**Desde el navegador:** abre **http://localhost:8080**, arrastra un CSV
+**Desde el navegador:** abre **http://localhost:8080**, entra con tu
+usuario y clave (los de `.env`, o `analista` / `dac-demo-2026` con el
+perfil `dev`), arrastra un CSV
 (por ejemplo `data/contratos_ejemplo.csv`) y pulsa **Analizar archivo**.
 Las pestañas muestran las alertas de reincidencia y de fraccionamiento
 con su evidencia, las filas descartadas y los conflictos. El botón
@@ -121,16 +142,20 @@ Para ver cada señal hay un archivo de ejemplo:
 **Desde la terminal:**
 
 ```bash
-curl -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
+curl -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" \
+  -F archivo=@data/contratos_ejemplo.csv http://localhost:8080/api/contratos/cargar
 ```
+
+Sin `-u` la API responde `401`.
 
 Responde `contratosNuevos`, `totalEnBd`, `duplicadosIgnorados`,
 `filasDescartadas`, `conflictos`, `alertas` y `alertasFraccionamiento`
 con su evidencia. Otros endpoints:
 
 ```bash
-curl http://localhost:8080/api/alertas                       # estado actual
-curl -OJ http://localhost:8080/api/alertas/exportar          # descarga alertas_dac.csv
+curl -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" http://localhost:8080/api/alertas            # estado actual
+curl -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -OJ http://localhost:8080/api/alertas/exportar  # descarga alertas_dac.csv
+curl http://localhost:8080/actuator/health                                              # público: {"status":"UP",...}
 ```
 
 > Los datos de `data/contratos_ejemplo.csv` son **ficticios**. Los
@@ -138,6 +163,11 @@ curl -OJ http://localhost:8080/api/alertas/exportar          # descarga alertas_
 > repositorio.
 
 ## Cómo demostrarlo
+
+> El guion completo de la entrega final, con una demostración por historia,
+> por control de seguridad y por RNF, está en
+> [docs/demo-entrega-final.md](docs/demo-entrega-final.md). Los momentos de
+> abajo son la versión corta.
 
 > ⚠️ **Antes de empezar, reinicia a estado limpio.** El contenedor siembra
 > los mismos 5 contratos que trae el CSV de ejemplo, así que sobre una
@@ -158,7 +188,7 @@ demostración desde cero.
 ### Momento 1 — funciona de punta a punta
 
 ```bash
-curl -s -F archivo=@data/contratos_ejemplo.csv \
+curl -s -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@data/contratos_ejemplo.csv \
   http://localhost:8080/api/contratos/cargar | jq
 ```
 
@@ -171,7 +201,7 @@ de entidades distintas: la señal cruza instituciones (R-3).
 Repite **exactamente el mismo comando**:
 
 ```bash
-curl -s -F archivo=@data/contratos_ejemplo.csv \
+curl -s -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@data/contratos_ejemplo.csv \
   http://localhost:8080/api/contratos/cargar | jq
 ```
 
@@ -183,7 +213,7 @@ de la base de datos ([HU-07](docs/historias-usuario.md)).
 ### Momento 3 — filas incompletas (HU-04)
 
 ```bash
-curl -s -F archivo=@data/contratos_incompletos_ejemplo.csv \
+curl -s -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@data/contratos_incompletos_ejemplo.csv \
   http://localhost:8080/api/contratos/cargar | jq
 ```
 
@@ -196,7 +226,7 @@ invalida por tres filas malas ([Decisión 12](docs/decisiones-tecnicas.md)).
 
 ```bash
 printf 'numero_contrato,entidad\n001,X\n' > /tmp/malo.csv
-curl -s -o /dev/null -w "HTTP %{http_code}\n" -F archivo=@/tmp/malo.csv \
+curl -s -o /dev/null -w "HTTP %{http_code}\n" -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@/tmp/malo.csv \
   http://localhost:8080/api/contratos/cargar
 ```
 
