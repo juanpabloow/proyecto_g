@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -27,9 +28,10 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Módulo 7 — Pruebas de seguridad básicas: ataques simulados contra el
  * producto real (HTTP real + PostgreSQL real). Cada prueba corresponde a un
- * punto del checklist de docs/seguridad-y-rnf.md (S-01 a S-08).
+ * punto del checklist de docs/seguridad-y-rnf.md (S-01 a S-10) o a Actuator.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureObservability // en pruebas, Spring Boot apaga /actuator/prometheus si no se pide
 @ExtendWith(OutputCaptureExtension.class)
 class SeguridadE2ETest {
 
@@ -124,9 +126,42 @@ class SeguridadE2ETest {
         assertEquals("nosniff", pagina.getFirst("X-Content-Type-Options"));
         assertEquals("no-referrer", pagina.getFirst("Referrer-Policy"));
 
+        assertEquals(1, pagina.get("Content-Security-Policy").size(), "la CSP no se duplica");
+        assertEquals(1, pagina.get("X-Frame-Options").size(), "X-Frame-Options no se duplica");
+
         HttpHeaders api = rest.getForEntity("/api/alertas", String.class).getHeaders();
-        assertEquals("no-store", api.getFirst(HttpHeaders.CACHE_CONTROL),
+        assertTrue(api.getFirst(HttpHeaders.CACHE_CONTROL).contains("no-store"),
                 "las alertas no quedan guardadas en cachés");
+    }
+
+    @Test
+    @DisplayName("S-01 un 401 también lleva las cabeceras de seguridad (CSP, nosniff, X-Frame-Options)")
+    void el_401_lleva_cabeceras() {
+        ResponseEntity<String> r = anonimo("/api/alertas");
+
+        assertEquals(HttpStatus.UNAUTHORIZED, r.getStatusCode());
+        HttpHeaders h = r.getHeaders();
+        assertNotNull(h.getFirst("Content-Security-Policy"), "antes el 401 salía sin CSP");
+        assertTrue(h.getFirst("Content-Security-Policy").contains("frame-ancestors 'none'"));
+        assertEquals("nosniff", h.getFirst("X-Content-Type-Options"));
+        assertEquals("DENY", h.getFirst("X-Frame-Options"));
+        assertEquals(1, h.get("Content-Security-Policy").size(), "la CSP no se duplica");
+    }
+
+    @Test
+    @DisplayName("Actuator: /actuator/health es público; info y prometheus exigen autenticación")
+    void actuator_solo_health_es_publico() {
+        ResponseEntity<String> salud = anonimo("/actuator/health");
+        assertEquals(HttpStatus.OK, salud.getStatusCode());
+        assertTrue(salud.getBody().contains("\"status\":\"UP\""), salud.getBody());
+
+        assertEquals(HttpStatus.UNAUTHORIZED, anonimo("/actuator/prometheus").getStatusCode(),
+                "las métricas no se publican sin sesión");
+        assertEquals(HttpStatus.UNAUTHORIZED, anonimo("/actuator/info").getStatusCode());
+
+        ResponseEntity<String> metricas = rest.getForEntity("/actuator/prometheus", String.class);
+        assertEquals(HttpStatus.OK, metricas.getStatusCode(), "con credenciales sí se ven las métricas");
+        assertTrue(metricas.getBody().contains("http_server_requests"), "formato Prometheus");
     }
 
     @Test
@@ -214,6 +249,11 @@ class SeguridadE2ETest {
         assertTrue(propiedades.contains("spring.datasource.password=${DB_PASSWORD}"),
                 "la clave se lee de .env o de una variable de entorno");
         assertFalse(propiedades.contains("dac_pass"), "la clave anterior ya no está en el repositorio");
+    }
+
+    /** Petición sin credenciales, como la haría un desconocido. */
+    private ResponseEntity<String> anonimo(String ruta) {
+        return new TestRestTemplate().getForEntity("http://localhost:" + puerto + ruta, String.class);
     }
 
     private ResponseEntity<String> enviar(String nombreArchivo, String contenido) {

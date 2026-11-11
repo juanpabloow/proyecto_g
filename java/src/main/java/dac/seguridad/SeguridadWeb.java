@@ -14,7 +14,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 
 /**
  * Inicio de sesión del analista (S-10, Módulo 7). Antes DAC no tenía sesión:
@@ -25,19 +27,35 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
  * <ul>
  *   <li><b>Formulario</b> ({@code /login.html}) para el analista en el navegador
  *       y <b>HTTP Basic</b> para clientes programáticos y las pruebas.</li>
- *   <li><b>Cabeceras:</b> las escribe {@code CabecerasDeSeguridad}; aquí se
- *       desactivan las de Spring Security para no duplicarlas ni pisar el
- *       {@code Cache-Control: no-store} que define la API (S-01).</li>
+ *   <li><b>Cabeceras (S-01):</b> las escribe Spring Security en <b>todas</b> las
+ *       respuestas, incluidas las que él mismo rechaza (401): CSP, {@code nosniff},
+ *       {@code X-Frame-Options: DENY}, {@code Referrer-Policy: no-referrer} y
+ *       {@code Cache-Control: no-store}. Antes las escribía un filtro propio que
+ *       corría después de Spring Security, así que un 401 salía sin ellas.</li>
  *   <li><b>CSRF:</b> desactivado en este alcance (deuda DT-16). El único
  *       endpoint que cambia estado es la carga del CSV, usada por un solo
  *       analista en localhost; la protección CSRF se añade junto con HTTPS
  *       (DT-14) al desplegar.</li>
- *   <li>{@code /actuator/**}, la página de login y los estilos quedan abiertos;
- *       todo lo demás exige sesión.</li>
+ *   <li>Quedan abiertos la página de login, sus estilos y script, y
+ *       {@code /actuator/health} (para saber si el servicio está vivo). Todo lo
+ *       demás exige sesión, incluidos {@code /actuator/info} y
+ *       {@code /actuator/prometheus}.</li>
  * </ul>
  */
 @Configuration
 public class SeguridadWeb {
+
+    /** La página solo carga scripts, estilos e imágenes del propio servidor. */
+    static final String POLITICA_DE_CONTENIDO = String.join("; ",
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self'",
+            "img-src 'self' data:",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "base-uri 'none'",
+            "form-action 'self'",
+            "frame-ancestors 'none'");
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -59,13 +77,16 @@ public class SeguridadWeb {
     public SecurityFilterChain cadena(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login.html", "/login", "/css/**", "/js/login.js", "/actuator/**", "/error").permitAll()
+                .requestMatchers("/login.html", "/login", "/css/**", "/js/login.js",
+                                 "/actuator/health", "/actuator/health/**", "/error").permitAll()
                 .anyRequest().authenticated())
-            // La API siempre responde 401 (nunca redirige al formulario): así un
-            // cliente que reenvía la cabecera no entra en un bucle de redirecciones.
-            // Las páginas del navegador sí van al login (formLogin, más abajo).
+            // La API y Actuator siempre responden 401 (nunca redirigen al
+            // formulario): así un cliente que reenvía la cabecera no entra en un
+            // bucle de redirecciones. Las páginas del navegador sí van al login.
             .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
-                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), new AntPathRequestMatcher("/api/**")))
+                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                new OrRequestMatcher(new AntPathRequestMatcher("/api/**"),
+                                     new AntPathRequestMatcher("/actuator/**"))))
             .formLogin(form -> form
                 .loginPage("/login.html")
                 .loginProcessingUrl("/login")
@@ -84,7 +105,12 @@ public class SeguridadWeb {
                 .logoutSuccessUrl("/login.html?salida")
                 .permitAll())
             .csrf(AbstractHttpConfigurer::disable)
-            .headers(AbstractHttpConfigurer::disable);
+            // nosniff y Cache-Control (no-cache, no-store, max-age=0,
+            // must-revalidate) vienen activos por defecto en Spring Security.
+            .headers(h -> h
+                .contentSecurityPolicy(csp -> csp.policyDirectives(POLITICA_DE_CONTENIDO))
+                .frameOptions(f -> f.deny())
+                .referrerPolicy(r -> r.policy(ReferrerPolicy.NO_REFERRER)));
         return http.build();
     }
 }
