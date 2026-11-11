@@ -23,7 +23,7 @@ una alerta es una hipótesis a verificar por una persona
 [![CI](https://github.com/juanpabloow/proyecto_g/actions/workflows/ci.yml/badge.svg)](https://github.com/juanpabloow/proyecto_g/actions/workflows/ci.yml)
 
 - **Las 8 historias del backlog están hechas**, cada una con sus pruebas
-  ([historias de usuario](docs/historias-usuario.md)).
+  ([historias de usuario](docs/backlog.md)).
 - **Dos señales de alerta**, cada una con los contratos que la originaron:
   - **Reincidencia** (HU-02): el mismo contratista con el mismo
     funcionario en 2 o más contratos, aunque sean de entidades distintas.
@@ -209,7 +209,7 @@ curl -s -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@data/contratos_ejempl
 → `contratosNuevos: 0`, `totalEnBd: 5`. El archivo se cargó dos veces y
 no se duplicó nada, ni los contratos ni la alerta. No depende de que el
 programa se acuerde: lo impide la restricción `uq_contrato_clave_natural`
-de la base de datos ([HU-07](docs/historias-usuario.md)).
+de la base de datos ([HU-07](docs/backlog.md)).
 
 ### Momento 3 — filas incompletas (HU-04)
 
@@ -364,15 +364,17 @@ dónde buscar algo.
 | [Visión del producto](docs/vision-producto.md) | Qué problema resuelve, para quién, alcance y métricas de éxito |
 | [Stakeholders](docs/stakeholders.md) | Quiénes están involucrados y qué exige cada uno del diseño |
 | [Problema duro](docs/problema-duro.md) | Idempotencia: por qué es el problema duro y hasta dónde está resuelto |
-| [Historias de usuario](docs/historias-usuario.md) | Las 8 historias con sus criterios y las pruebas que los verifican |
+| [Backlog](docs/backlog.md) | Las 8 historias con su estado, cada criterio con su prueba Java, y la trazabilidad historia → código → prueba → commit → demostración |
 | [Reglas de negocio](docs/reglas-de-negocio.md) | Qué cuenta como alerta, glosario del dominio y limitaciones conocidas |
-| [Diagrama de dominio](docs/diagrama-dominio.md) | Las clases del sistema y por qué están modeladas así |
+| [Modelo de dominio](docs/modelo-dominio.md) | Las clases Java reales (campos, métodos y relaciones) en Mermaid |
 | [Esquema de base de datos](docs/esquema-bd.md) | Modelo entidad–relación: qué se guarda y cómo se relaciona |
 | [Modelo físico](db/schema.sql) | El esquema anterior traducido a PostgreSQL, ejecutable |
 | [Módulo Java — HU-04](docs/modulo-java-hu04.md) | Qué entrega el módulo Java, cómo se relaciona con las demás historias y cómo demostrarlo |
 | [Decisiones técnicas](docs/decisiones-tecnicas.md) | Por qué se decidió cada cosa y qué se descartó |
 | [Equipo](docs/Equipo/) | Rol y aporte de cada integrante |
-| [Seguridad y RNF](docs/seguridad-y-rnf.md) | Checklist de seguridad aplicado, modelo de amenazas, los 2 RNF medidos y la deuda de seguridad |
+| [Seguridad y RNF](docs/seguridad-y-rnf.md) | Checklist de seguridad, superficie de entrada, RNF medidos, OWASP Top 10:2025 |
 | [Evidencias por semana](docs/seguridad/) | Semana 13 (seguridad) y semana 14 (RNF con gráficas y release 0.3) |
 | [Deuda técnica](docs/deuda-tecnica.md) | Con qué deuda nos quedamos, cuánto cuesta no pagarla y cómo se paga |
-| [Uso de IA](docs/uso-ia.md) | Declaración del uso de la IA en cada entrega y postura del equipo |
+| [Uso de IA](docs/uso-ia.md) | Registro por actividad del uso de la IA y postura del equipo |
+| [Paquete para la entrevista](docs/paquete-entrevista.md) | Problema, problema duro, métricas reales y decisiones, para preparar la entrevista |
+| [Guion de demostración](docs/demo-entrega-final.md) | Una demostración por historia, control de seguridad y RNF, verificada en vivo |

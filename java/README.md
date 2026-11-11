@@ -20,10 +20,10 @@ del proyecto están en [esqueleto/rebanada.md](../esqueleto/rebanada.md).
 
 | Historia | Qué aporta este módulo |
 |---|---|
-| [HU-01](../docs/historias-usuario.md) | Carga del CSV con validación de las 6 columnas requeridas (R-1) |
-| [HU-02](../docs/historias-usuario.md) | Detección de reincidencia contratista–funcionario (R-3), con su evidencia |
-| [HU-04](../docs/historias-usuario.md) | Las filas incompletas se descartan y se reportan ([Decisión 12](../docs/decisiones-tecnicas.md)). Detalle en [modulo-java-hu04.md](../docs/modulo-java-hu04.md) |
-| [HU-07](../docs/historias-usuario.md) | Idempotencia **entre ejecuciones**: recargar el mismo CSV no duplica nada, ni contratos ni alertas |
+| [HU-01](../docs/backlog.md) | Carga del CSV con validación de las 6 columnas requeridas (R-1) |
+| [HU-02](../docs/backlog.md) | Detección de reincidencia contratista–funcionario (R-3), con su evidencia |
+| [HU-04](../docs/backlog.md) | Las filas incompletas se descartan y se reportan ([Decisión 12](../docs/decisiones-tecnicas.md)). Detalle en [modulo-java-hu04.md](../docs/modulo-java-hu04.md) |
+| [HU-07](../docs/backlog.md) | Idempotencia **entre ejecuciones**: recargar el mismo CSV no duplica nada, ni contratos ni alertas |
 
 ## Cómo correrlo
 
@@ -122,6 +122,6 @@ crearse. Las 25 de dominio no necesitan nada.
 ## Lo que no hace
 
 - No reconoce nombres escritos distinto ([R-5](../docs/reglas-de-negocio.md), HU-05).
-- Un duplicado con datos distintos se pierde en silencio ([HU-06](../docs/historias-usuario.md)).
+- Un duplicado con datos distintos se pierde en silencio ([HU-06](../docs/backlog.md)).
 - `monto` y `fecha` viajan como texto por el dominio ([R-8](../docs/reglas-de-negocio.md)); solo se convierten en el mapeo a persistencia.
 - No hay canalización de CI/CD: la rebanada se verifica a mano.

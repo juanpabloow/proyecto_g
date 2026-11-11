@@ -15,7 +15,7 @@ demostrar que funciona.
 ## 1. Qué entrega
 
 **Una sola historia: [HU-04 — No generar alertas a partir de filas
-incompletas](historias-usuario.md#hu-04--no-generar-alertas-a-partir-de-filas-incompletas).**
+incompletas](backlog.md#hu-04--no-generar-alertas-a-partir-de-filas-incompletas).**
 
 > **Como** analista (S-1), **quiero** que las filas sin contratista o sin
 > funcionario no produzcan alertas, **para** no perder tiempo revisando
@@ -87,7 +87,7 @@ Dos precisiones que suelen preguntarse:
   contratista.
 - **Los valores que sí se cargan no se normalizan.** Decidir que
   `" Juan Pérez"` y `"Juan Pérez"` son la misma persona es
-  [HU-05](historias-usuario.md), necesita validación de S-1 y está
+  [HU-05](backlog.md), necesita validación de S-1 y está
   explícitamente descartado por ahora
   ([R-5](reglas-de-negocio.md), [Decisión 9](decisiones-tecnicas.md)).
 
@@ -176,11 +176,11 @@ Todas en `java/src/main/java/dac/`:
 ### Dos detalles que conviene conocer
 
 1. **`clavesVistas` es ahora una variable local**, no un campo de
-   instancia como en el [diagrama de dominio](diagrama-dominio.md). Solo
+   instancia como en el [diagrama de dominio](modelo-dominio.md). Solo
    deduplica dentro de un mismo archivo. La idempotencia entre archivos y
    entre ejecuciones la garantiza la base de datos
    (`uq_contrato_clave_natural`), que es lo que cerró
-   [HU-07](historias-usuario.md). La divergencia está declarada en
+   [HU-07](backlog.md). La divergencia está declarada en
    [rebanada §6.B](../esqueleto/rebanada.md).
 2. **Las pruebas son JUnit 5.** Los 7 casos de HU-04 viven en
    `FilasIncompletasTest` y sus nombres son los criterios de aceptación.
@@ -345,9 +345,9 @@ Las mismas limitaciones del MVP, salvo HU-04:
   prueba que lo deja documentado como limitación conocida, no como
   descuido.
 - **No recuerda nada al cerrar el programa**
-  ([HU-07](historias-usuario.md)).
+  ([HU-07](backlog.md)).
 - **Un duplicado con datos distintos se pierde en silencio**
-  ([HU-06](historias-usuario.md)).
+  ([HU-06](backlog.md)).
 - **`monto` y `fecha` son texto**: no se suman ni se comparan
   ([R-8](reglas-de-negocio.md)).
 - **No hay interfaz gráfica.** Es una herramienta de consola. El tablero
@@ -373,7 +373,7 @@ Las mismas limitaciones del MVP, salvo HU-04:
 
 ---
 
-**Referencias:** [HU-04](historias-usuario.md#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) ·
+**Referencias:** [HU-04](backlog.md#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) ·
 [R-6](reglas-de-negocio.md) ·
 [Decisión 12 y 13](decisiones-tecnicas.md) ·
 [README del módulo](../java/README.md)

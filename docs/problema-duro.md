@@ -42,41 +42,31 @@ Regla asociada: [R-2](reglas-de-negocio.md).
 
 ## 4. Cómo se resuelve hoy
 
-Dentro de una carga, `CargadorDeContratos` mantiene un conjunto de claves
-vistas: antes de agregar una fila calcula su clave natural, y si ya está,
-la fila se ignora y no llega a la detección de alertas.
+Dentro de una carga, `CargadorDeContratos` guarda la primera versión de
+cada clave natural; una fila con una clave ya vista se ignora y no llega a
+la detección de alertas.
 
 Entre cargas y entre ejecuciones lo impide la base de datos: la
 restricción `uq_contrato_clave_natural` ([db/schema.sql](../db/schema.sql))
 hace imposible guardar dos contratos con el mismo número en la misma
-entidad, y `ContratoServicio` consulta por clave natural antes de
-insertar (HU-07).
+entidad, y `ContratoServicio` solo inserta los contratos cuya clave no está
+ya guardada (HU-07).
 
 **Regla de conflicto (gana el primero).** Si dos filas comparten la clave
-pero traen datos distintos —por ejemplo un monto corregido— se conserva
-**la primera** y la segunda se descarta sin avisar. Verificado: dos filas
-con clave `001 + E1` y montos `100` y `999` dejan un solo contrato con
-monto `100`.
-
-Es una decisión consciente y también una limitación: si la segunda fila
-era la corrección, se pierde. Registrar esos conflictos en lugar de
-descartarlos en silencio queda como trabajo futuro
-([HU-06](historias-usuario.md)).
+pero traen datos distintos, por ejemplo un monto corregido, se conserva
+**la primera**, y la diferencia **se reporta** como conflicto con su número
+de fila (HU-06), tanto dentro del archivo como contra lo ya guardado.
 
 ## 5. Qué queda cubierto y qué no
 
 | Escenario | ¿Cubierto? | Detalle |
 |---|---|---|
 | Fila duplicada dentro del mismo archivo | ✅ Sí | Se ignora la repetición |
-| Correr el programa dos veces con el mismo archivo | ✅ Sí | No hay estado acumulado: el resultado es idéntico |
-| Duplicado con datos distintos (adenda, corrección) | ⚠️ Parcial | Gana el primero, sin registro del conflicto (§4) |
-| Dos archivos distintos, en una misma ejecución, que comparten contratos | ❌ No | Cada llamada a `cargar_contratos` usa su propio conjunto de claves; unir las dos listas duplicaría |
-| Idempotencia entre ejecuciones (persistencia) | ❌ No | No hay base de datos todavía. Es el siguiente paso del roadmap |
-| Dos personas cargando archivos al mismo tiempo (concurrencia) | ❌ No | Riesgo conocido y aceptado para este MVP |
-
-**El alcance real de esta entrega es la idempotencia *dentro de una
-carga*.** Está dicho así, y no como "idempotencia total", a propósito:
-prometer el caso persistente sin base de datos sería falso.
+| Volver a cargar el mismo archivo | ✅ Sí | 0 contratos nuevos; la base lo impide con `uq_contrato_clave_natural` |
+| Dos archivos distintos que comparten contratos | ✅ Sí | Cada contrato existe una sola vez |
+| Idempotencia entre ejecuciones (persistencia) | ✅ Sí | Los contratos están en PostgreSQL y sobreviven al reinicio del servidor |
+| Duplicado con datos distintos (adenda, corrección) | ✅ Sí, con límite | Gana el primero y el conflicto se reporta, pero no se guarda ([DT-08](deuda-tecnica.md)) |
+| Dos personas cargando el mismo contrato al mismo tiempo | ⚠️ Parcial | La base impide el duplicado y la segunda carga recibe 409; falta la prueba automática ([DT-09](deuda-tecnica.md)) |
 
 ## 6. Criterios de aceptación
 

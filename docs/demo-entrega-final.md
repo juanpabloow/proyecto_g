@@ -415,7 +415,7 @@ jq '{p95_ms: .metrics["http_req_duration{endpoint:alertas}"]["p(95)"], errores: 
 - **Modo Basic: no cumple el p95**, y es lo esperado: 0,00 % de errores,
   pero el p95 supera 1.500 ms (**1,99 s** en esta verificación) y k6
   termina con `thresholds on metrics 'http_req_duration{endpoint:alertas}'
-  have been crossed`. Es la deuda D-7 de
+  have been crossed`. Es la deuda DT-17 de
   [seguridad-y-rnf.md](seguridad-y-rnf.md): BCrypt en cada petición.
 
 ---

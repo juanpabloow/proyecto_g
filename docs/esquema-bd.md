@@ -1,17 +1,19 @@
 # Esquema de base de datos
 
-Cómo se guardarían los datos de DAC. El diseño va en tres pasos y aquí
-están los dos primeros:
+Cómo se guardan los datos de DAC. El diseño va en tres pasos; aquí están
+los dos primeros y el tercero es [db/schema.sql](../db/schema.sql):
 
 | Paso | Qué responde | Estado |
 |---|---|---|
 | **1. Modelo conceptual (entidad–relación)** | Qué entidades existen y cómo se relacionan, sin pensar todavía en tablas | En este documento |
 | **2. Modelo lógico (relacional)** | Cómo eso se convierte en tablas, claves y llaves foráneas | En este documento |
-| 3. Modelo físico | Tipos exactos, longitudes, índices y motor | Pendiente |
+| 3. Modelo físico | Tipos exactos, longitudes, índices y motor | En [db/schema.sql](../db/schema.sql) (PostgreSQL 16) |
 
-> Todavía no hay base de datos: el MVP trabaja en memoria y no recuerda
-> nada entre ejecuciones ([problema duro §5](problema-duro.md)). Este
-> esquema es el diseño que resuelve [HU-07](historias-usuario.md).
+> Este esquema está implementado en PostgreSQL 16 desde el esqueleto
+> andante y resuelve [HU-07](backlog.md): los contratos sobreviven entre
+> ejecuciones ([problema duro §5](problema-duro.md)). Además de lo que se
+> describe aquí, el modelo físico agrega `ck_contrato_monto` (monto ≥ 0,
+> R-8) y `ck_alerta_tipo` (solo `REINCIDENCIA`, ver DT-01).
 
 ## 1. Modelo conceptual (entidad–relación)
 
@@ -64,7 +66,7 @@ Dos cosas que este diagrama debe dejar claras:
   contratos y un contrato puede sustentar varias alertas. La notación
   pata de gallo solo distingue "uno" de "varios"; en DAC el mínimo real
   es **2**, porque una alerta con un solo contrato no es una
-  reincidencia ([HU-02](historias-usuario.md)).
+  reincidencia ([HU-02](backlog.md)).
 
 ## 2. Modelo lógico (relacional)
 
@@ -162,7 +164,7 @@ esa fila no podría guardarse y la carga entera fallaría
 2. **Clave primaria compuesta en `ALERTA_CONTRATO`.** Un contrato no
    puede repetirse como evidencia de la misma alerta, y ninguna alerta
    existe sin filas en esta tabla — **aquí vive la evidencia**, que es lo
-   que hace útil a DAC ([HU-02](historias-usuario.md)).
+   que hace útil a DAC ([HU-02](backlog.md)).
 
 ## Correspondencia con el diagrama de dominio
 
@@ -179,9 +181,8 @@ esa fila no podría guardarse y la carga entera fallaría
 
 ## Lo que no está, a propósito
 
-- **Registro de cargas, filas descartadas y conflictos.** Serían útiles
-  para [HU-04](historias-usuario.md) y [HU-06](historias-usuario.md),
-  pero esas historias todavía no están decididas.
+- **Registro de cargas, filas descartadas y conflictos.** HU-04 y HU-06
+  los informan en la respuesta, pero no se guardan ([DT-08](deuda-tecnica.md)).
 - **Usuarios y estado de revisión de la alerta.** Es una decisión del
   negocio, no del equipo ([Decisión 11](decisiones-tecnicas.md)).
 - **Tipos exactos, longitudes e índices.** Están en el modelo físico:

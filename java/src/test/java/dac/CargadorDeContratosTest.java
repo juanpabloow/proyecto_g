@@ -65,6 +65,15 @@ class CargadorDeContratosTest {
         }
 
         @Test
+        @DisplayName("falla con mensaje claro si el archivo no tiene encabezado (solo líneas en blanco)")
+        void falla_si_no_hay_encabezado() {
+            var error = assertThrows(IllegalArgumentException.class, () -> carga("\n , , \n"));
+
+            assertTrue(error.getMessage().contains("no tiene encabezado"),
+                    "el error debe decir que falta el encabezado: " + error.getMessage());
+        }
+
+        @Test
         @DisplayName("conserva las columnas adicionales del CSV (R-1)")
         void conserva_columnas_adicionales() {
             Contrato contrato = carga(ENCABEZADO.strip() + ",objeto\n"

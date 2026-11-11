@@ -1,10 +1,117 @@
 # Uso de IA en el proyecto
 
-## Herramienta usada
-Claude (Anthropic), usado desde nuestros computadores como apoyo para
-diseño, documentación, explicación de código y, desde la entrega de las
-8 historias, generación de código y pruebas (ver la declaración de esa
-entrega más abajo).
+## Herramientas usadas
+
+| Herramienta | Qué es | Para qué la usamos |
+|---|---|---|
+| **Claude Code** (Anthropic) | Asistente que trabaja sobre el repositorio desde la terminal: lee el código, ejecuta comandos y pruebas, y propone o hace cambios | Código, pruebas, auditorías del repositorio, mediciones y documentación técnica |
+| **Claude (chat)** (Anthropic) | Conversación en el navegador, sin acceso al repositorio | Planificación, preparación de la presentación, lectura de las guías del curso y redacción de los prompts que luego le dimos a Claude Code. [COMPLETAR: confirmar y detallar] |
+
+Las secciones "Declaración…" de más abajo se escribieron al cerrar cada
+entrega. El registro por actividad las resume con los mismos campos para
+todas.
+
+## Registro por actividad
+
+Cada actividad dice: herramienta, para qué, qué se aceptó, qué se
+modificó, qué se rechazó y por qué, cómo se verificó, la decisión humana
+final y el riesgo que permanece. Lo marcado **[COMPLETAR]** solo lo puede
+escribir el equipo.
+
+### A1. Visión, stakeholders y documentos de proceso (agosto de 2026)
+- **Herramienta:** Claude [COMPLETAR: chat o Claude Code].
+- **Para qué:** primer borrador de la visión del producto, los stakeholders y los documentos de proceso.
+- **Aceptado:** la estructura y los borradores, después de revisarlos.
+- **Modificado:** [COMPLETAR: qué partes reescribió el equipo].
+- **Rechazado y por qué:** [COMPLETAR].
+- **Cómo se verificó:** revisión del equipo contra el enunciado del curso. [COMPLETAR: quién revisó].
+- **Decisión humana final:** el alcance y el problema duro los eligió el equipo (Decisiones 1 y 2).
+- **Riesgo que permanece:** texto que el equipo no sepa defender. Se mitiga con la Definition of Done: cada integrante debe poder explicarlo sin la IA.
+
+### A2. Explicación de Git y GitHub
+- **Herramienta:** Claude [COMPLETAR: chat o Claude Code].
+- **Para qué:** explicar ramas, Pull Requests y fusión a integrantes sin experiencia previa.
+- **Aceptado / modificado / rechazado:** [COMPLETAR].
+- **Cómo se verificó:** el historial muestra el trabajo por ramas y Pull Requests (PR #1 a #10).
+- **Decisión humana final:** trabajar siempre con rama y Pull Request, sin fusionar con el CI en rojo.
+- **Riesgo que permanece:** ninguno relevante.
+
+### A3. Esqueleto inicial de código: carga del CSV y reincidencias (agosto de 2026)
+- **Herramienta:** Claude [COMPLETAR: chat o Claude Code].
+- **Para qué:** generar el primer código (en Python) y sus pruebas unitarias.
+- **Aceptado:** el código, después de que se explicara línea por línea al equipo.
+- **Modificado:** se reimplementó en Java y se consolidó en un solo lenguaje (Decisiones 14 y 18).
+- **Rechazado y por qué:** [COMPLETAR].
+- **Cómo se verificó:** pruebas automáticas, portadas a JUnit al consolidar.
+- **Decisión humana final:** consolidar en Java + Spring Boot (Decisión 18).
+- **Riesgo que permanece:** ninguno: ese código ya no existe en el repositorio.
+
+### A4. Revisión de consistencia entre documentos y código
+- **Herramienta:** Claude [COMPLETAR: chat o Claude Code].
+- **Para qué:** encontrar comportamientos que estaban en el código y no escritos en ninguna parte.
+- **Aceptado:** documentar las reglas en [reglas-de-negocio.md](reglas-de-negocio.md) (Decisión 8).
+- **Modificado / rechazado:** [COMPLETAR].
+- **Cómo se verificó:** cada regla cita su clase y su prueba.
+- **Decisión humana final:** las decisiones de negocio pendientes se documentan, no se inventan (Decisión 11).
+- **Riesgo que permanece:** que documento y código vuelvan a separarse. Se revisó otra vez en la entrega final.
+
+### A5. Backlog completo, interfaz web y CI (PR #5, octubre de 2026)
+- **Herramienta:** Claude [COMPLETAR: chat o Claude Code].
+- **Para qué:** código y pruebas de HU-03, HU-05, HU-06 y HU-08, interfaz web, flujo de CI y primer borrador de su documentación.
+- **Aceptado:** el código y las pruebas, revisados en el Pull Request.
+- **Modificado:** los valores de fraccionamiento y de normalización que propuso la IA quedaron como **provisionales y configurables** (Decisiones 19 y 20).
+- **Rechazado y por qué:** [COMPLETAR].
+- **Cómo se verificó:** la suite completa (63 pruebas en ese momento) en verde en GitHub Actions contra PostgreSQL.
+- **Decisión humana final:** el equipo definió las 8 historias y su prioridad; la IA trabajó sobre ese backlog.
+- **Riesgo que permanece:** reglas que nadie del negocio validó ([DT-02](deuda-tecnica.md)).
+
+### A6. Módulo 7: seguridad y RNF (PR #6, octubre de 2026)
+- **Herramienta:** Claude [COMPLETAR: chat o Claude Code].
+- **Para qué:** checklist de seguridad, ataques simulados, secretos fuera del repositorio, RNF medidos.
+- **Aceptado, modificado y rechazado:** ver la tabla *Registro de sugerencias de la IA* en la declaración del Módulo 7, más abajo. Por ejemplo, se **modificó** la etiqueta `v0.4.0-rc1` a `v0.3.0-rc1`, y se **rechazó** desplegar sin HTTPS.
+- **Cómo se verificó:** CI en verde, con 82 pruebas en ese momento.
+- **Decisión humana final:** las de esa tabla; la prueba de cargas simultáneas se le asignó a QA.
+- **Riesgo que permanece:** la deuda de seguridad declarada ([deuda-tecnica.md](deuda-tecnica.md)).
+
+### A7. Observabilidad, k6 y OWASP Top 10:2025 (noviembre de 2026)
+- **Herramienta:** Claude [COMPLETAR: chat o Claude Code].
+- **Para qué:** Actuator y Micrometer, el stack de Prometheus y Grafana, la prueba de carga con k6 y el mapeo OWASP.
+- **Aceptado:** todo lo anterior.
+- **Modificado:** el mapeo OWASP se volvió estricto en la entrega final (A8 abajo).
+- **Rechazado y por qué:** la revisión de dependencias en el CI, porque alarga mucho cada ejecución (DT-15).
+- **Cómo se verificó:** la medición de k6 del 4/11. Al auditar se encontró que el script dejó de funcionar al entrar el login; se corrigió en la entrega final.
+- **Decisión humana final:** agregar el inicio de sesión en la misma entrega.
+- **Riesgo que permanece:** ver DT-17 y DT-24.
+
+### A8. Inicio de sesión (PR #9, noviembre de 2026)
+- **Herramienta:** Claude [COMPLETAR: chat o Claude Code].
+- **Para qué:** Spring Security con un usuario, clave en hash BCrypt, pantalla de login.
+- **Aceptado:** la implementación y la prueba de 401.
+- **Modificado:** [COMPLETAR].
+- **Rechazado y por qué:** los roles, que se dejaron como deuda DT-03.
+- **Cómo se verificó:** CI en verde.
+- **Decisión humana final:** hacerlo en una rama aparte con Pull Request.
+- **Riesgo que permanece:** CSRF desactivado y sin límite de intentos (DT-16, DT-20).
+
+### A9. Auditorías de solo lectura y entrega final (PR #10, 11 de noviembre de 2026)
+- **Herramienta:** Claude Code.
+- **Para qué:** auditar el repositorio contra el checklist de clase y la guía de entrega, y luego cerrar los huecos: k6 con autenticación, EXPLAIN ANALYZE, Actuator y cabeceras, credenciales y puertos, Maven Wrapper, documentos de la guía, trazabilidad, Mockito, protocolo de medición y guion de demostración.
+- **Aceptado:** los cambios del PR #10, un commit por tarea.
+- **Modificado:** al medir, k6 con HTTP Basic no cumplió RNF-3. En vez de cambiar el objetivo, se agregó un modo con sesión (el uso real) y se reportaron las dos cifras. [COMPLETAR: confirmar que el equipo está de acuerdo con este criterio].
+- **Rechazado y por qué:** quedaron fuera de alcance, por decisión del equipo, los roles, el usuario de base de datos sin superusuario, CSRF, el límite de intentos, HTTPS y el cifrado en reposo. Se documentaron como deuda.
+- **Cómo se verificó:** la suite completa con `./mvnw verify`, el CI del PR #10 y el guion [demo-entrega-final.md](demo-entrega-final.md) ejecutado desde una base limpia (la interfaz, en Chrome conducido por un script).
+- **Decisión humana final:** el alcance, la regla "nada queda como cumple si no se demuestra en vivo" y la revisión del PR por otro integrante antes de fusionar. [COMPLETAR: quién revisó y fusionó].
+- **Riesgo que permanece:** el volumen de documentación generada; cada integrante debe poder explicar su parte. Las secciones de reflexión y el video son del equipo.
+
+### A10. Claude (chat): planificación, presentación, guías y prompts
+- **Herramienta:** Claude (chat).
+- **Para qué:** [COMPLETAR: planificación de las entregas, preparación de la presentación y del video, lectura de las guías del curso y redacción de los prompts para Claude Code].
+- **Aceptado:** [COMPLETAR].
+- **Modificado:** [COMPLETAR].
+- **Rechazado y por qué:** [COMPLETAR].
+- **Cómo se verificó:** [COMPLETAR].
+- **Decisión humana final:** [COMPLETAR].
+- **Riesgo que permanece:** [COMPLETAR].
 
 ## En qué se usó
 - Redacción inicial de la visión del producto y de los documentos de
@@ -197,4 +304,4 @@ conceptos nuevos, pero cada integrante es responsable de entender y poder
 explicar el código y los documentos que entrega, sin depender de la IA
 para sustentar el proyecto. Es también un criterio de la *Definition of
 Done*: una historia no está terminada si nadie del equipo puede
-explicarla sin ayuda ([historias-usuario.md](historias-usuario.md)).
+explicarla sin ayuda ([backlog.md](backlog.md)).

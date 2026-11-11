@@ -9,26 +9,43 @@ Prioridad: **Alta** = puede producir una alerta falsa, esconder una real o
 exponer datos. **Media** = limita el uso real o encarece el
 mantenimiento. **Baja** = incomodidad o costo futuro.
 
-## Resumen
+## Resumen, por prioridad
+
+Este es el **registro único** de la deuda del proyecto: técnica, de
+seguridad y de RNF. [seguridad-y-rnf.md](seguridad-y-rnf.md) enlaza aquí y
+no la repite.
 
 | ID | Deuda | Tipo | Prioridad | Esfuerzo para pagarla |
 |---|---|---|---|---|
 | DT-01 | Las alertas de fraccionamiento no se guardan en la base | Diseño | Alta | Medio |
-| DT-02 | Reglas de HU-03 y HU-05 sin validar con un analista real | Negocio | Alta | Bajo (reunión) + configuración |
+| DT-02 | Reglas de HU-03, HU-05 y Decisión 12 sin validar con un analista real | Negocio | Alta | Bajo (reunión) + configuración |
+| DT-19 | La aplicación se conecta a PostgreSQL con un **superusuario** | Seguridad | Alta | Bajo |
+| DT-20 | Sin límite de intentos de inicio de sesión (fuerza bruta) | Seguridad | Alta | Medio |
+| DT-14 | Sin HTTPS | Seguridad | Alta al desplegar | Bajo |
+| DT-16 | CSRF desactivado (se paga con HTTPS al desplegar) | Seguridad | Alta al desplegar | Bajo |
+| DT-21 | Sin cifrado en reposo (volumen de la base, CSV exportado, JDBC sin SSL) | Seguridad | Alta al desplegar | Medio |
 | DT-03 | Falta separar roles (ya hay inicio de sesión básico de un solo usuario) | Seguridad | Media | Medio |
-| ~~DT-04~~ | ~~Credenciales de la base escritas en el repositorio~~ — **pagada en el Módulo 7** | Seguridad | — | — |
 | DT-05 | Alertas guardadas que ya no se recalculan (alertas "huérfanas") | Diseño | Media | Medio |
 | DT-06 | Cada carga relee **todo** el histórico en memoria | Rendimiento | Media | Alto |
 | DT-07 | `monto` y `fecha` siguen siendo texto en el dominio | Diseño | Media | Medio |
 | DT-08 | Los conflictos (HU-06) se informan pero no se guardan | Diseño | Media | Bajo |
-| DT-09 | Dos cargas simultáneas: ya responden 409 claro, falta la prueba automática | Concurrencia | Baja | Bajo |
 | DT-10 | El esquema se crea borrando tablas; no hay migraciones | Operación | Media | Medio |
-| ~~DT-11~~ | ~~Consultas repetidas por fila al guardar (N+1)~~ — **pagada en el Módulo 7 (RNF-1)** | Rendimiento | — | — |
+| DT-15 | Sin revisión automática de dependencias vulnerables | Seguridad | Media | Bajo |
+| DT-17 | Con HTTP Basic en cada petición no se cumple RNF-3 (BCrypt por petición) | Rendimiento | Media | Medio |
+| DT-18 | `/actuator/health` no detecta a tiempo la caída de la base | Disponibilidad | Media | Bajo |
+| DT-22 | El inicio de sesión no se audita y el registro solo sale por consola | Seguridad | Media | Bajo |
+| DT-23 | HU-06 compara distinto dentro del archivo y contra la base | Diseño | Media | Bajo |
+| DT-09 | Dos cargas simultáneas: ya responden 409 claro, falta la prueba automática | Concurrencia | Baja | Bajo |
 | DT-12 | La interfaz web no tiene pruebas automáticas propias | Pruebas | Baja | Medio |
 | DT-13 | Un solo tope de cuantía para todas las entidades | Negocio | Baja | Medio |
-| DT-14 | Sin HTTPS | Seguridad | Alta al desplegar | Bajo |
-| DT-15 | Sin revisión automática de dependencias vulnerables | Seguridad | Media | Bajo |
-| DT-16 | CSRF desactivado (se paga con HTTPS al desplegar) | Seguridad | Alta al desplegar | Bajo |
+| DT-24 | Sin tableros ni alertas en Grafana | Observabilidad | Baja | Bajo |
+| DT-25 | Accesibilidad sin auditar (RNF-6) | Calidad | Baja | Bajo |
+| DT-26 | Sin medición de cobertura ni análisis estático (RNF-5) | Pruebas | Baja | Bajo |
+| DT-27 | Sin imagen Docker de la aplicación ni despliegue continuo (RNF-7) | Operación | Baja | Medio |
+| DT-28 | Las columnas adicionales del CSV no se validan | Seguridad | Baja | Bajo |
+| DT-29 | Las etiquetas de release (`v0.3.0-rc1` y otras) no existen en el repositorio | Proceso | Baja | Bajo |
+| ~~DT-04~~ | ~~Credenciales de la base escritas en el repositorio~~ — **pagada en el Módulo 7** | Seguridad | — | — |
+| ~~DT-11~~ | ~~Consultas repetidas por fila al guardar (N+1)~~ — **pagada en el Módulo 7 (RNF-1)** | Rendimiento | — | — |
 
 ## Detalle
 
@@ -146,12 +163,12 @@ aviso; no hay forma de decidir después cuál versión era la correcta.
 **Cómo se paga.** Tabla `conflicto_carga` con la versión rechazada y el
 estado de la revisión.
 
-### DT-09 — Cargas simultáneas · Media
+### DT-09 — Cargas simultáneas · Baja
 
 **Qué es.** Si dos personas cargan el mismo archivo al mismo tiempo, ambas
 pueden ver que el contrato "no existe" e intentar insertarlo. La base lo
-impide (`uq_contrato_clave_natural`), pero la segunda carga termina en un
-error 500 en vez de un mensaje claro.
+impide (`uq_contrato_clave_natural`). Antes del Módulo 7 la segunda carga
+terminaba en un error 500; hoy responde 409 (ver abajo).
 
 **Cómo se paga.** Capturar la violación de unicidad y reintentar, o usar
 `INSERT … ON CONFLICT DO NOTHING`. Ya estaba registrado como pendiente en
@@ -232,6 +249,124 @@ que él la pida.
 **Cómo se paga.** Activar CSRF (token por cookie) y enviar la cabecera
 `X-XSRF-TOKEN` desde la interfaz; se hace junto con HTTPS (DT-14) al desplegar.
 
+### DT-17 — Con HTTP Basic en cada petición no se cumple RNF-3 · Media
+
+**Qué es.** Con 200 usuarios, si cada petición lleva HTTP Basic, Spring
+Security verifica el hash BCrypt **cada vez**. El p95 de `/api/alertas` fue
+2,72 s (objetivo: 1,5 s). Con sesión (iniciar sesión una vez, como el
+navegador) fue 777 ms ([seguridad-y-rnf.md](seguridad-y-rnf.md), RNF-3).
+**Por qué se aceptó.** El analista usa la pantalla, con sesión; no hay hoy
+un cliente programático masivo.
+**Costo de no pagarla.** Una integración que consulte la API con Basic de
+forma intensiva satura la CPU y degrada a todos.
+**Cómo se paga.** Que los clientes usen sesión o un token; o cachear las
+alertas (DT-01) para que cada respuesta cueste menos.
+
+### DT-18 — Health no detecta a tiempo la caída de la base · Media
+
+**Qué es.** Con PostgreSQL detenido, `/actuator/health` se quedó esperando
+más de 15 s sin responder, y `/actuator/health/readiness` siguió en `UP`
+(comprobado el 11/11/2026).
+**Costo de no pagarla.** Un monitor o un orquestador no se entera a tiempo
+de que DAC no puede atender (RNF-4).
+**Cómo se paga.** Incluir `db` en el grupo `readiness`
+(`management.endpoint.health.group.readiness.include=readinessState,db`) y
+bajar `spring.datasource.hikari.connection-timeout`.
+
+### DT-19 — La aplicación usa un superusuario de la base · Alta
+
+**Qué es.** `dac_user` es el usuario que crea la imagen oficial de
+PostgreSQL con `POSTGRES_USER`, y es superusuario (`rolsuper = t`). La
+aplicación se conecta con él.
+**Por qué se aceptó.** Base local con datos ficticios; quedó fuera del
+alcance de la entrega final.
+**Costo de no pagarla.** Si alguien lograra ejecutar SQL a través de DAC,
+podría borrar la base, crear usuarios o leer otras bases. La defensa de
+hoy (consultas parametrizadas) es una sola capa.
+**Cómo se paga.** Script `00_roles.sql` que cree un rol `dac_app` sin
+superusuario, con solo `SELECT, INSERT, UPDATE` sobre las 6 tablas (y
+`TRUNCATE` solo para un rol de pruebas), y conectar la aplicación con él.
+
+### DT-20 — Sin límite de intentos de inicio de sesión · Alta
+
+**Qué es.** Se puede probar claves sin freno en `/login` o con HTTP Basic.
+**Costo de no pagarla.** Una clave débil se adivina; detrás están datos
+personales y alertas.
+**Cómo se paga.** Bloqueo temporal tras N intentos fallidos por usuario e
+IP (por ejemplo, 5 en 15 minutos) y registro de los intentos (DT-22).
+
+### DT-21 — Sin cifrado en reposo · Alta al desplegar
+
+**Qué es.** El volumen de PostgreSQL, el CSV exportado y la conexión JDBC
+(sin SSL) quedan en texto plano.
+**Costo de no pagarla.** Quien copie el volumen o un CSV exportado lee
+nombres de personas y alertas (S-8).
+**Cómo se paga.** Disco o volumen cifrado en el servidor, SSL en JDBC y una
+política de manejo para los CSV exportados.
+
+### DT-22 — El login no se audita y el registro solo sale por consola · Media
+
+**Qué es.** `dac.auditoria` registra cargas, rechazos y exportaciones, pero
+no los inicios de sesión, y escribe solo en la consola del servidor.
+**Costo de no pagarla.** No queda rastro de intentos de acceso, y el
+registro se pierde al cerrar la terminal (OWASP A09).
+**Cómo se paga.** Registrar los eventos de autenticación de Spring Security
+en `dac.auditoria` y escribir el registro en un archivo con rotación.
+
+### DT-23 — HU-06 compara distinto dentro del archivo y contra la base · Media
+
+**Qué es.** Dentro de un archivo, `CargadorDeContratos.camposDistintos`
+compara el monto **como texto** (`45000000` y `45000000.00` cuentan como
+distintos). Contra la base, `ContratoServicio` lo compara **como número**.
+Los nombres se comparan sin espacios sobrantes en el primer caso y exactos
+en el segundo. Además, el conflicto nombra el campo, pero no muestra los dos
+valores (revisado en el código).
+**Costo de no pagarla.** Un conflicto falso por formato, y el analista no
+ve qué valor cambió para decidir.
+**Cómo se paga.** Una sola comparación en el dominio, con el monto como
+número, y agregar al conflicto el valor conservado y el descartado.
+
+### DT-24 — Sin tableros ni alertas en Grafana · Baja
+
+**Qué es.** Prometheus raspa las métricas y Grafana tiene la fuente de
+datos, pero no hay tableros preparados ni alertas.
+**Cómo se paga.** Tablero provisionado (p95, errores, pool de conexiones) y
+una alerta por p95 alto o health `DOWN`.
+
+### DT-25 — Accesibilidad sin auditar · Baja
+
+**Qué es.** El HTML usa `lang`, etiquetas y atributos `aria-*`, pero no se
+ha corrido ninguna auditoría (RNF-6).
+**Costo de no pagarla.** Puede haber barreras para usuarios con
+discapacidad que no conocemos.
+**Cómo se paga.** axe o Lighthouse en el CI y corregir lo que encuentren.
+
+### DT-26 — Sin cobertura ni análisis estático · Baja
+
+**Cómo se paga.** JaCoCo con un umbral mínimo en `./mvnw verify`.
+
+### DT-27 — Sin imagen Docker de la aplicación ni despliegue continuo · Baja
+
+**Qué es.** Docker solo levanta la base; DAC corre con `./mvnw` en el
+computador de cada uno (RNF-7).
+**Cómo se paga.** `Dockerfile` de la aplicación y un servicio `app` en
+`docker-compose.yml`.
+
+### DT-28 — Columnas adicionales del CSV sin validar · Baja
+
+**Qué es.** Las columnas que no son las seis requeridas se aceptan sin
+límite de cantidad ni de largo, y vuelven en la respuesta JSON
+(`camposAdicionales`). El archivo completo sí está limitado a 10 MB.
+**Cómo se paga.** Limitar la cantidad y el largo de las columnas adicionales.
+
+### DT-29 — Las etiquetas de release no existen · Baja
+
+**Qué es.** La [Decisión 28](decisiones-tecnicas.md) y la evidencia de la
+semana 14 anuncian `v0.3.0-rc1`, pero el repositorio no tiene ninguna
+etiqueta ni release en GitHub.
+**Cómo se paga.** Crear las etiquetas de la guía sobre los commits que
+corresponden, según su fecha real, en cuanto el equipo los apruebe.
+
 ## Lo que sí se pagó en esta entrega
 
 | Deuda anterior | Cómo se pagó |
@@ -244,3 +379,5 @@ que él la pida.
 | DT-04 clave en el repositorio (Módulo 7) | `.env` + revisión en el CI, [Decisión 24](decisiones-tecnicas.md) |
 | DT-11 consultas por fila (Módulo 7) | Lectura única e índices en memoria, [Decisión 25](decisiones-tecnicas.md) |
 | Errores 500 con datos largos o montos negativos (Módulo 7) | Validación en la frontera, [seguridad-y-rnf.md](seguridad-y-rnf.md) S-02 |
+| Credencial demo por defecto y Actuator abierto (entrega final) | Perfil `dev` y Actuator cerrado salvo `health`, [Decisiones 30 y 31](decisiones-tecnicas.md) |
+| Sin Maven Wrapper; arranque distinto al de la guía (entrega final) | `./mvnw` desde la raíz, [Decisión 29](decisiones-tecnicas.md) |

@@ -308,28 +308,29 @@ conocido en DAC. Los ⚠️ remiten a la [sección 7](#7-deuda-conocida-al-cierr
 
 ## 7. Deuda conocida al cierre
 
-Fuera del alcance de la entrega final, decidido por el equipo. Cada punto
-dice qué riesgo deja y cómo se resolvería.
+La deuda tiene un **registro único** en [deuda-tecnica.md](deuda-tecnica.md),
+con su prioridad, su riesgo, la consecuencia de mantenerla y cómo se paga.
+Aquí solo se enlaza la que toca seguridad y RNF:
 
-| # | Deuda | Riesgo | Solución propuesta |
-|---|---|---|---|
-| D-1 | **Sin roles** (DT-03): un solo usuario ve y hace todo | Cualquier persona con la clave ve todas las alertas y puede cargar datos; no se puede dar acceso de solo lectura a un coordinador | Usuarios en la base con rol `ANALISTA` / `COORDINADOR` y reglas `hasRole` por endpoint |
-| D-2 | **La aplicación usa un superusuario de la base** (S-16) | Si alguien lograra ejecutar SQL a través de DAC, podría borrar la base, crear usuarios o leer otras bases | Script `00_roles.sql` que cree un rol `dac_app` sin superusuario, con solo `SELECT, INSERT, UPDATE` sobre las 6 tablas, y conectar la aplicación con ese rol |
-| D-3 | **CSRF desactivado** (DT-16, S-17) | Una página maliciosa abierta por el analista con sesión iniciada podría hacer que su navegador suba un CSV | Activar el CSRF de Spring Security y enviar el token desde `app.js` |
-| D-4 | **Sin límite de intentos de login** (S-15) | Se puede adivinar la clave probando sin freno | Bloqueo temporal tras N intentos fallidos por usuario e IP (por ejemplo, 5 en 15 minutos) y registro de los intentos |
-| D-5 | **Sin HTTPS** (DT-14) | En red, la clave (Basic o formulario) y los datos viajan legibles | TLS en un proxy inverso (Nginx o Caddy) o en Spring Boot, con HSTS |
-| D-6 | **Sin cifrado en reposo** | Quien copie el volumen de la base o un CSV exportado lee nombres y alertas | Disco o volumen cifrado en el servidor; SSL en la conexión JDBC; política para los CSV exportados |
-| D-7 | **Basic masivo no cumple RNF-3** | Un cliente que haga muchas peticiones con Basic satura la CPU con BCrypt (p95 de 2,72 s con 200 usuarios) | Que los clientes usen sesión o un token; o cachear las alertas (DT-01) para bajar el costo de cada respuesta |
-| D-8 | **Health no detecta la caída de la base** (RNF-4) | Un monitor no se entera a tiempo: la petición se queda esperando más de 15 s | Incluir `db` en el grupo `readiness` y bajar `spring.datasource.hikari.connection-timeout` |
-| D-9 | **Sin escaneo de dependencias** (DT-15) | Una librería con una vulnerabilidad conocida pasa desapercibida | Dependabot u OWASP Dependency-Check en el CI |
-| D-10 | **El login no se audita y el registro solo sale por consola** (A09) | No queda rastro de intentos de acceso; el registro se pierde al cerrar la terminal | Registrar los eventos de autenticación en `dac.auditoria` y escribir el registro en un archivo con rotación |
-| D-11 | **Sin tableros ni alertas en Grafana** | Las métricas existen, pero nadie se entera de un problema | Tablero preparado (latencia p95, errores, pool de conexiones) y una alerta por p95 o por health `DOWN` |
-| D-12 | **Accesibilidad no auditada** (RNF-6) | Puede haber barreras para usuarios con discapacidad que no conocemos | Auditoría con axe o Lighthouse en el CI y corrección de lo que encuentre |
-| D-13 | **Sin cobertura ni análisis estático** (RNF-5) | No se sabe qué parte del código queda sin probar | JaCoCo con un umbral mínimo en el CI |
-| D-14 | **Sin imagen Docker de la aplicación ni despliegue continuo** (RNF-7) | Solo se puede ejecutar en un computador con JDK y Maven | `Dockerfile` de la aplicación y un servicio `app` en `docker-compose.yml` |
-| D-15 | **Columnas adicionales del CSV sin validar** | Un archivo con miles de columnas extra infla la respuesta JSON, aunque se limita a 10 MB | Limitar la cantidad y el largo de las columnas adicionales |
-| D-16 | **Cargas simultáneas sin prueba automática** (DT-09) | El 409 está revisado en código, pero no se demuestra en cada corrida | Prueba con dos cargas en paralelo del mismo contrato |
-| D-17 | **La etiqueta `v0.3.0-rc1` no existe** | La [Decisión 28](decisiones-tecnicas.md) y la semana 14 la anuncian, pero no se creó en el repositorio | Crear la etiqueta (o una `v1.0.0` de la entrega final) sobre el commit fusionado |
+| Tema | Deuda |
+|---|---|
+| Roles (analista / coordinador) | [DT-03](deuda-tecnica.md#dt-03--faltan-roles--media-antes-sin-inicio-de-sesión) |
+| Superusuario de la base | [DT-19](deuda-tecnica.md#dt-19--la-aplicación-usa-un-superusuario-de-la-base--alta) |
+| CSRF desactivado | [DT-16](deuda-tecnica.md#dt-16--csrf-desactivado--alta-al-desplegar) |
+| Sin límite de intentos de login | [DT-20](deuda-tecnica.md#dt-20--sin-límite-de-intentos-de-inicio-de-sesión--alta) |
+| Sin HTTPS | [DT-14](deuda-tecnica.md#dt-14--sin-https--alta-al-desplegar) |
+| Sin cifrado en reposo | [DT-21](deuda-tecnica.md#dt-21--sin-cifrado-en-reposo--alta-al-desplegar) |
+| Basic masivo no cumple RNF-3 | [DT-17](deuda-tecnica.md#dt-17--con-http-basic-en-cada-petición-no-se-cumple-rnf-3--media) |
+| Health no detecta la caída de la base (RNF-4) | [DT-18](deuda-tecnica.md#dt-18--health-no-detecta-a-tiempo-la-caída-de-la-base--media) |
+| Sin escaneo de dependencias | [DT-15](deuda-tecnica.md#dt-15--sin-revisión-de-dependencias--media) |
+| Login sin auditar, registro solo por consola | [DT-22](deuda-tecnica.md#dt-22--el-login-no-se-audita-y-el-registro-solo-sale-por-consola--media) |
+| Sin tableros ni alertas en Grafana | [DT-24](deuda-tecnica.md#dt-24--sin-tableros-ni-alertas-en-grafana--baja) |
+| Accesibilidad sin auditar (RNF-6) | [DT-25](deuda-tecnica.md#dt-25--accesibilidad-sin-auditar--baja) |
+| Sin cobertura ni análisis estático (RNF-5) | [DT-26](deuda-tecnica.md#dt-26--sin-cobertura-ni-análisis-estático--baja) |
+| Sin imagen Docker ni despliegue continuo (RNF-7) | [DT-27](deuda-tecnica.md#dt-27--sin-imagen-docker-de-la-aplicación-ni-despliegue-continuo--baja) |
+| Columnas adicionales del CSV sin validar | [DT-28](deuda-tecnica.md#dt-28--columnas-adicionales-del-csv-sin-validar--baja) |
+| Cargas simultáneas sin prueba automática | [DT-09](deuda-tecnica.md#dt-09--cargas-simultáneas--baja) |
+| Etiquetas de release inexistentes | [DT-29](deuda-tecnica.md#dt-29--las-etiquetas-de-release-no-existen--baja) |
 
 ## 8. Evidencias
 
@@ -348,15 +349,15 @@ dice qué riesgo deja y cómo se resolvería.
 |---|---|---|
 | Seguridad BD: NOT NULL y PK | `db/schema.sql`: PK en las 6 tablas, NOT NULL salvo `monto`/`fecha` (R-6, Decisión 17) y `nit` | ✅ |
 | Seguridad BD: consultas parametrizadas | Spring Data JPA; SQLi probado (S-03) | ✅ |
-| Seguridad BD: permisos del usuario | Superusuario (S-16) | ⚠️ deuda D-2 |
+| Seguridad BD: permisos del usuario | Superusuario (S-16) | ⚠️ deuda DT-19 |
 | SQL Injection, XSS, fórmulas | S-03, S-04, S-08 (ataques simulados) | ✅ |
-| Login y contraseñas | Inicio de sesión + BCrypt + sin credencial por defecto (S-10, S-11, S-12) | ✅ básico (roles, D-1) |
+| Login y contraseñas | Inicio de sesión + BCrypt + sin credencial por defecto (S-10, S-11, S-12) | ✅ básico (roles, DT-03) |
 | Superficie de entrada | Sección 2 | ✅ |
-| Datos sensibles y cifrado | Sección 3 | ⚠️ sin cifrado (D-5, D-6) |
+| Datos sensibles y cifrado | Sección 3 | ⚠️ sin cifrado (DT-14, DT-21) |
 | OWASP Top 10:2025 | Sección 6 (evaluación estricta) | ✅ evaluado, 3 de 10 sin huecos |
 | RNF de los 8 atributos | Sección 4 | ✅ escritos; 3 cumplen, 4 parciales, 1 sin verificar |
-| k6 con 200 usuarios | RNF-3 | ✅ con sesión · ❌ con Basic (D-7) |
+| k6 con 200 usuarios | RNF-3 | ✅ con sesión · ❌ con Basic (DT-17) |
 | Tiempos de consultas SQL | Sección 4, EXPLAIN ANALYZE | ✅ |
-| Grafana / observabilidad | Sección 5 | ✅ métricas y Prometheus · ⚠️ sin tableros (D-11) |
+| Grafana / observabilidad | Sección 5 | ✅ métricas y Prometheus · ⚠️ sin tableros (DT-24) |
 | Documentación `docs/seguridad-y-rnf.md` | Este archivo | ✅ |
 | Declarar uso de IA | [uso-ia.md](uso-ia.md) | ✅ |
