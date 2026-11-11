@@ -218,6 +218,30 @@ debajo** del tope, dentro de **30 días**, que juntos **alcanzan** el tope de
 
 ---
 
+## Trazabilidad: historia → código → prueba → commit → demostración
+
+Cada historia, con las clases que la implementan, sus pruebas, el commit
+donde se implementó (hash corto, comprobado con `git log`) y la
+demostración que la muestra en vivo en
+[demo-entrega-final.md](demo-entrega-final.md). Para ver un commit:
+`git show --stat <hash>`.
+
+| Historia | Clases (`java/src/main/java/dac/`) | Pruebas | Commit de implementación | Commit de las pruebas | Demostración |
+|---|---|---|---|---|---|
+| HU-01 Cargar CSV | `dominio/CargadorDeContratos`, `dominio/LectorCSV`, `api/ContratoControlador` | `CargadorDeContratosTest` | `b027f43` (09/09/2026, Java + Spring Boot); primera versión en Python: `6f20ee0` (18/08/2026) | `339fc23` (16/09/2026) | 2 |
+| HU-02 Reincidencia | `dominio/DetectorDeReincidencias`, `dominio/Alerta`, `aplicacion/ContratoServicio` | `DetectorDeReincidenciasTest`, `ContratoE2ETest` | `b027f43` (09/09/2026); la alerta se guarda con su evidencia desde `383aab6` (16/09/2026); primera versión en Python: `6f20ee0` | `339fc23` (16/09/2026) | 3 |
+| HU-03 Fraccionamiento | `dominio/DetectorDeFraccionamiento`, `dominio/AlertaFraccionamiento`, `aplicacion/ConfiguracionDeSenales` | `DetectorDeFraccionamientoTest`, `AlertasE2ETest` | `2c7f35d` (dominio) y `d1f4151` (aplicación), 28/10/2026 | `03f33fd` (28/10/2026) | 5 |
+| HU-04 Filas incompletas | `dominio/CargadorDeContratos` (`CAMPOS_OBLIGATORIOS`), `dominio/FilaDescartada` | `FilasIncompletasTest`, `ContratoE2ETest` | `6f96cae` (09/09/2026, primera versión Java); en Spring Boot desde `b027f43` | `339fc23` (16/09/2026) | 6 |
+| HU-05 Nombres variantes | `dominio/NormalizadorDeNombres`, `dominio/Contrato` (`par()`) | `NombresVariantesTest`, `AlertasE2ETest` | `2c7f35d` (28/10/2026) | `03f33fd` (28/10/2026) | 7 |
+| HU-06 Conflictos | `dominio/ConflictoDeDuplicado`, `dominio/CargadorDeContratos` (`camposDistintos`), `aplicacion/ContratoServicio` | `ConflictosDeDuplicadosTest`, `AlertasE2ETest` | `2c7f35d` (dominio) y `d1f4151` (aplicación), 28/10/2026 | `03f33fd` (28/10/2026) | 8 |
+| HU-07 Persistencia | `aplicacion/ContratoServicio`, `persistencia/ContratoJpa` y repositorios, `uq_contrato_clave_natural` | `ContratoE2ETest`, `RequisitosNoFuncionalesTest` | `b027f43` (09/09/2026) | `d6f39ad` (16/09/2026, como `ContratoServicioE2ETest`; renombrada a `ContratoE2ETest` en `9eb5b38`) | 4 y 9 |
+| HU-08 Exportar | `dominio/ExportadorDeAlertas`, `api/AlertaControlador` | `ExportadorDeAlertasTest`, `AlertasE2ETest` | `2c7f35d` (dominio) y `e48a13f` (API), 28/10/2026 | `03f33fd` (28/10/2026) | 10 |
+
+El código de cada historia siguió cambiando después (por ejemplo, el
+rendimiento de la carga en el Módulo 7). El commit de la tabla es donde la
+historia **empezó a funcionar**; `git log --follow <archivo>` muestra el
+resto.
+
 ## Definition of Ready / Definition of Done
 
 Una historia está **lista para trabajarse** cuando tiene rol, necesidad y
