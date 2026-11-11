@@ -121,6 +121,32 @@ exigiera un p95 más bajo, el siguiente paso sería **cachear o precalcular**
 las alertas (ligado a DT-01, que ya anota que el fraccionamiento no se
 persiste). Reproducible con `k6 run rnf/k6-concurrencia.js`.
 
+### Tiempos de las consultas SQL (EXPLAIN ANALYZE)
+
+Para saber si la base es el cuello de botella, se midieron con
+`EXPLAIN (ANALYZE, BUFFERS)` las dos consultas de lectura de DAC, con el SQL
+equivalente al que genera Hibernate y **5.000 contratos** ficticios en la base
+(20 entidades, 600 contratistas, 250 funcionarios; `rnf/k6-cargar-datos.js`,
+semilla 2026). Cada consulta se corrió 3 veces.
+
+| Consulta | Plan | Tiempo de ejecución (3 corridas) |
+|---|---|---|
+| `ContratoRepo.findAllConFetch()` — todos los contratos con entidad, contratista y funcionario | 3 *hash joins* + lectura secuencial de `contrato` + orden por id (en memoria, 1 MB) | **2,97 · 2,46 · 2,34 ms** (planificación 0,50 · 0,15 · 0,11 ms) |
+| `findByNumeroContratoAndEntidad` — búsqueda por clave natural (R-2), con parámetros | *Index Scan* sobre `uq_contrato_clave_natural`, 1 fila, 3 páginas leídas | **0,016 · 0,004 · 0,009 ms** |
+
+- **Conclusión:** el SQL no es el cuello de botella. Leer los 5.000 contratos
+  cuesta unos 3 ms; el resto del tiempo de `GET /api/alertas` (p95 de cientos
+  de ms bajo carga, RNF-3) está en recalcular las dos señales en Java y en
+  convertir la respuesta a JSON. Por eso la mejora propuesta es cachear o
+  precalcular las alertas (DT-01), no agregar índices.
+- La clave natural usa el índice único que ya garantiza la idempotencia: la
+  misma restricción sirve para integridad y para rendimiento.
+- Lectura secuencial en `findAllConFetch` es lo correcto: la consulta pide
+  **todas** las filas, así que un índice no ayudaría.
+- **Evidencia:** planes completos en
+  [`seguridad/explain-analyze.txt`](seguridad/explain-analyze.txt).
+  Reproducible con `docker exec -i dac_db psql -U dac_user -d dac < rnf/explain-analyze.sql`.
+
 ## 3. Deuda de seguridad declarada
 
 Riesgos que **decidimos no atender** en este alcance, por qué es

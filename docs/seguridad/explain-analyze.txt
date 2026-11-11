@@ -1,0 +1,160 @@
+-- Salida de: docker exec -i dac_db psql -U dac_user -d dac < rnf/explain-analyze.sql
+-- 2026-11-11 · PostgreSQL 16 en Docker (Apple M4 Pro) · 5.000 contratos ficticios (semilla 2026)
+
+Pager usage is off.
+ contratos_en_bd 
+-----------------
+            5000
+(1 row)
+
+=== 1. findAllConFetch (corrida 1 de 3) ===
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=492.92..505.42 rows=5000 width=522) (actual time=2.659..2.790 rows=5000 loops=1)
+   Sort Key: c.id_contrato
+   Sort Method: quicksort  Memory: 1013kB
+   Buffers: shared hit=69
+   ->  Hash Join  (cost=38.68..185.73 rows=5000 width=522) (actual time=0.175..1.807 rows=5000 loops=1)
+         Hash Cond: (c.id_funcionario = f.id_funcionario)
+         Buffers: shared hit=66
+         ->  Hash Join  (cost=30.14..163.85 rows=5000 width=497) (actual time=0.123..1.346 rows=5000 loops=1)
+               Hash Cond: (c.id_contratista = ct.id_contratista)
+               Buffers: shared hit=63
+               ->  Hash Join  (cost=13.38..133.87 rows=5000 width=468) (actual time=0.027..0.809 rows=5000 loops=1)
+                     Hash Cond: (c.id_entidad = e.id_entidad)
+                     Buffers: shared hit=58
+                     ->  Seq Scan on contrato c  (cost=0.00..107.00 rows=5000 width=50) (actual time=0.001..0.249 rows=5000 loops=1)
+                           Buffers: shared hit=57
+                     ->  Hash  (cost=11.50..11.50 rows=150 width=426) (actual time=0.006..0.006 rows=20 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                           Buffers: shared hit=1
+                           ->  Seq Scan on entidad e  (cost=0.00..11.50 rows=150 width=426) (actual time=0.002..0.003 rows=20 loops=1)
+                                 Buffers: shared hit=1
+               ->  Hash  (cost=10.23..10.23 rows=523 width=37) (actual time=0.079..0.079 rows=600 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 49kB
+                     Buffers: shared hit=5
+                     ->  Seq Scan on contratista ct  (cost=0.00..10.23 rows=523 width=37) (actual time=0.002..0.033 rows=600 loops=1)
+                           Buffers: shared hit=5
+         ->  Hash  (cost=5.46..5.46 rows=246 width=33) (actual time=0.038..0.038 rows=250 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 24kB
+               Buffers: shared hit=3
+               ->  Seq Scan on funcionario f  (cost=0.00..5.46 rows=246 width=33) (actual time=0.003..0.017 rows=250 loops=1)
+                     Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=194
+ Planning Time: 0.496 ms
+ Execution Time: 2.966 ms
+(34 rows)
+
+=== 1. findAllConFetch (corrida 2 de 3) ===
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=492.92..505.42 rows=5000 width=522) (actual time=2.111..2.287 rows=5000 loops=1)
+   Sort Key: c.id_contrato
+   Sort Method: quicksort  Memory: 1013kB
+   Buffers: shared hit=66
+   ->  Hash Join  (cost=38.68..185.73 rows=5000 width=522) (actual time=0.078..1.574 rows=5000 loops=1)
+         Hash Cond: (c.id_funcionario = f.id_funcionario)
+         Buffers: shared hit=66
+         ->  Hash Join  (cost=30.14..163.85 rows=5000 width=497) (actual time=0.054..1.142 rows=5000 loops=1)
+               Hash Cond: (c.id_contratista = ct.id_contratista)
+               Buffers: shared hit=63
+               ->  Hash Join  (cost=13.38..133.87 rows=5000 width=468) (actual time=0.006..0.666 rows=5000 loops=1)
+                     Hash Cond: (c.id_entidad = e.id_entidad)
+                     Buffers: shared hit=58
+                     ->  Seq Scan on contrato c  (cost=0.00..107.00 rows=5000 width=50) (actual time=0.001..0.171 rows=5000 loops=1)
+                           Buffers: shared hit=57
+                     ->  Hash  (cost=11.50..11.50 rows=150 width=426) (actual time=0.003..0.004 rows=20 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                           Buffers: shared hit=1
+                           ->  Seq Scan on entidad e  (cost=0.00..11.50 rows=150 width=426) (actual time=0.001..0.002 rows=20 loops=1)
+                                 Buffers: shared hit=1
+               ->  Hash  (cost=10.23..10.23 rows=523 width=37) (actual time=0.047..0.047 rows=600 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 49kB
+                     Buffers: shared hit=5
+                     ->  Seq Scan on contratista ct  (cost=0.00..10.23 rows=523 width=37) (actual time=0.001..0.021 rows=600 loops=1)
+                           Buffers: shared hit=5
+         ->  Hash  (cost=5.46..5.46 rows=246 width=33) (actual time=0.021..0.022 rows=250 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 24kB
+               Buffers: shared hit=3
+               ->  Seq Scan on funcionario f  (cost=0.00..5.46 rows=246 width=33) (actual time=0.002..0.010 rows=250 loops=1)
+                     Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=16
+ Planning Time: 0.145 ms
+ Execution Time: 2.455 ms
+(34 rows)
+
+=== 1. findAllConFetch (corrida 3 de 3) ===
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=492.92..505.42 rows=5000 width=522) (actual time=2.094..2.210 rows=5000 loops=1)
+   Sort Key: c.id_contrato
+   Sort Method: quicksort  Memory: 1013kB
+   Buffers: shared hit=66
+   ->  Hash Join  (cost=38.68..185.73 rows=5000 width=522) (actual time=0.075..1.535 rows=5000 loops=1)
+         Hash Cond: (c.id_funcionario = f.id_funcionario)
+         Buffers: shared hit=66
+         ->  Hash Join  (cost=30.14..163.85 rows=5000 width=497) (actual time=0.053..1.123 rows=5000 loops=1)
+               Hash Cond: (c.id_contratista = ct.id_contratista)
+               Buffers: shared hit=63
+               ->  Hash Join  (cost=13.38..133.87 rows=5000 width=468) (actual time=0.005..0.658 rows=5000 loops=1)
+                     Hash Cond: (c.id_entidad = e.id_entidad)
+                     Buffers: shared hit=58
+                     ->  Seq Scan on contrato c  (cost=0.00..107.00 rows=5000 width=50) (actual time=0.001..0.171 rows=5000 loops=1)
+                           Buffers: shared hit=57
+                     ->  Hash  (cost=11.50..11.50 rows=150 width=426) (actual time=0.003..0.004 rows=20 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                           Buffers: shared hit=1
+                           ->  Seq Scan on entidad e  (cost=0.00..11.50 rows=150 width=426) (actual time=0.001..0.002 rows=20 loops=1)
+                                 Buffers: shared hit=1
+               ->  Hash  (cost=10.23..10.23 rows=523 width=37) (actual time=0.047..0.047 rows=600 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 49kB
+                     Buffers: shared hit=5
+                     ->  Seq Scan on contratista ct  (cost=0.00..10.23 rows=523 width=37) (actual time=0.001..0.021 rows=600 loops=1)
+                           Buffers: shared hit=5
+         ->  Hash  (cost=5.46..5.46 rows=246 width=33) (actual time=0.021..0.021 rows=250 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 24kB
+               Buffers: shared hit=3
+               ->  Seq Scan on funcionario f  (cost=0.00..5.46 rows=246 width=33) (actual time=0.001..0.009 rows=250 loops=1)
+                     Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=16
+ Planning Time: 0.109 ms
+ Execution Time: 2.336 ms
+(34 rows)
+
+PREPARE
+=== 2. clave natural (corrida 1 de 3) ===
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using uq_contrato_clave_natural on contrato c  (cost=0.28..8.30 rows=1 width=50) (actual time=0.011..0.011 rows=1 loops=1)
+   Index Cond: ((id_entidad = '11'::bigint) AND ((numero_contrato)::text = 'K6-02500'::text))
+   Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=5
+ Planning Time: 0.036 ms
+ Execution Time: 0.016 ms
+(7 rows)
+
+=== 2. clave natural (corrida 2 de 3) ===
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using uq_contrato_clave_natural on contrato c  (cost=0.28..8.30 rows=1 width=50) (actual time=0.002..0.002 rows=1 loops=1)
+   Index Cond: ((id_entidad = '11'::bigint) AND ((numero_contrato)::text = 'K6-02500'::text))
+   Buffers: shared hit=3
+ Planning Time: 0.014 ms
+ Execution Time: 0.004 ms
+(5 rows)
+
+=== 2. clave natural (corrida 3 de 3) ===
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using uq_contrato_clave_natural on contrato c  (cost=0.28..8.30 rows=1 width=50) (actual time=0.006..0.006 rows=1 loops=1)
+   Index Cond: ((id_entidad = '11'::bigint) AND ((numero_contrato)::text = 'K6-02500'::text))
+   Buffers: shared hit=3
+ Planning Time: 0.022 ms
+ Execution Time: 0.009 ms
+(5 rows)
+
+DEALLOCATE
