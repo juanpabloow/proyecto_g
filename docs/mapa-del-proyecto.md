@@ -155,7 +155,7 @@ contrato de la prueba única y trazabilidad a los insumos— está en
 | [HU-03](backlog.md#hu-03--detectar-fraccionamiento-de-contratos) Fraccionamiento | R-9, R-8 | `dominio/DetectorDeFraccionamiento.java` | `DetectorDeFraccionamientoTest` (9) + `AlertasE2ETest` |
 | [HU-08](backlog.md#hu-08--exportar-el-reporte-de-alertas) Exportar reporte | R-10 | `dominio/ExportadorDeAlertas.java`, `api/AlertaControlador.java` | `ExportadorDeAlertasTest` (6) + `AlertasE2ETest` |
 
-**88 pruebas:** 59 de dominio (rápidas, sin base de datos) y 29 de
+**93 pruebas:** 63 de dominio (rápidas, sin base de datos) y 29 de
 punta a punta por HTTP real contra PostgreSQL, que corren en GitHub
 Actions en cada Pull Request. Cada criterio de aceptación automatizable
 de las 8 historias tiene su prueba;
@@ -168,7 +168,7 @@ Los nombres de las pruebas **son** los criterios de aceptación: al correr
 
 ```bash
 docker compose up -d             # PostgreSQL 16 en localhost:5433 + Adminer en localhost:8081
-./mvnw verify                    # las 88 pruebas (desde la raíz)
+./mvnw verify                    # las 93 pruebas (desde la raíz)
 ./mvnw spring-boot:run           # levanta DAC en localhost:8080
 ```
 
@@ -185,7 +185,7 @@ contratos como evidencia (uno en la alcaldía y dos en la gobernación: la
 señal cruza entidades, R-3). Repetir el mismo `curl` vuelve a dar
 `contratosNuevos: 0`: eso es HU-07.
 
-Salida esperada de `./mvnw verify`: `Tests run: 88, Failures: 0, Errors: 0`.
+Salida esperada de `./mvnw verify`: `Tests run: 93, Failures: 0, Errors: 0`.
 Las 26 de punta a punta requieren el contenedor arriba; las otras 56 no
 tocan la base.
 

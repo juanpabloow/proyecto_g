@@ -10,6 +10,11 @@ que el analista pueda verificarla en segundos. DAC **no acusa a nadie**:
 una alerta es una hipótesis a verificar por una persona
 ([por qué](docs/vision-producto.md)).
 
+## Video de la entrega
+
+**[COMPLETAR: enlace al video]** (3 minutos; guion en
+[docs/demo-entrega-final.md](docs/demo-entrega-final.md#guion-del-video-3-minutos)).
+
 ## Integrantes
 
 | Integrante | Rol | Ficha |
@@ -38,7 +43,7 @@ una alerta es una hipótesis a verificar por una persona
 - Las filas incompletas se descartan y se reportan (HU-04).
 - **Interfaz web** en http://localhost:8080 para cargar el CSV, ver las
   alertas con su evidencia y **exportar el reporte** a Excel (HU-08).
-- **88 pruebas automatizadas:** 59 de dominio y 29 de punta a punta por
+- **93 pruebas automatizadas:** 63 de dominio y 30 de punta a punta por
   HTTP real contra PostgreSQL, incluidas pruebas de ataques simulados y la
   medición de los dos requisitos no funcionales. Corren solas en cada Pull
   Request (GitHub Actions).
@@ -63,7 +68,7 @@ proyecto**.
 cp .env.example .env        # 1. secretos locales: edítalo y cambia las claves
 docker compose up -d        # 2. PostgreSQL 16 y el visor web de la base
 ./mvnw spring-boot:run      # 3. DAC en http://localhost:8080 (deja esta terminal abierta)
-./mvnw verify               # 4. en otra terminal: compila y corre las 88 pruebas
+./mvnw verify               # 4. en otra terminal: compila y corre las 93 pruebas
 ```
 
 ### 1. El archivo `.env`
@@ -113,8 +118,8 @@ solo para leerla formateada: si no lo tienes, quita el `| jq`.
 ### Pruebas
 
 `./mvnw verify` necesita la base corriendo. Esperado:
-`Tests run: 88, Failures: 0, Errors: 0, Skipped: 0` y `BUILD SUCCESS`. Las
-59 de dominio no usan la base. Las 29 de punta a punta sí, y **vacían sus
+`Tests run: 93, Failures: 0, Errors: 0, Skipped: 0` y `BUILD SUCCESS`. Las
+63 de dominio no usan la base. Las 30 de punta a punta sí, y **vacían sus
 tablas** (`TRUNCATE`): no las corras sobre datos que quieras conservar.
 
 `java/ejecutar.sh` sigue existiendo como atajo (`run`, `dev`, `build`) sobre

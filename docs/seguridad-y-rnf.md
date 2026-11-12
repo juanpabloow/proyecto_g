@@ -254,7 +254,7 @@ y `.txt` (salida legible); la variante Basic, en
   contra PostgreSQL real, y cada regla de negocio tiene su prueba.
 - **Cómo se verifica:** GitHub Actions (`.github/workflows/ci.yml`) corre
   `mvn -B test` en cada Pull Request; `mvn test` local.
-- **Estado hoy:** ✅ **88 pruebas, 0 fallos** (59 de dominio y 29 de punta a
+- **Estado hoy:** ✅ **93 pruebas, 0 fallos** (63 de dominio y 29 de punta a
   punta) en local el 11/11; el CI las corre en el Pull Request de esta
   entrega. ❌ No se mide la cobertura (JaCoCo) ni hay
   análisis estático.

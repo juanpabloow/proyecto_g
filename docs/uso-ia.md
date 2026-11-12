@@ -286,7 +286,7 @@ fusionar.
 - La regla de que nada quede como "cumple" si no se puede demostrar en vivo.
 - Revisar el Pull Request antes de fusionarlo.
 
-**Verificación:** suite completa de 88 pruebas en verde contra PostgreSQL
+**Verificación:** suite completa de 93 pruebas en verde contra PostgreSQL
 real, y cada demostración del guion ejecutada desde una base limpia.
 
 ## Qué no se hizo con IA
