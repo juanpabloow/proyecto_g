@@ -90,8 +90,38 @@ más importantes:
 - El fraccionamiento no se guarda (DT-01).
 - Seguridad para desplegar: superusuario de la base, sin límite de intentos, sin HTTPS ni cifrado (DT-19, DT-20, DT-14, DT-21).
 
-## 6. Reflexión del equipo
+## 6. Seguridad en una frase por control
 
-[COMPLETAR: qué aprendimos, qué haríamos distinto, qué fue lo más difícil
-y cómo usamos la IA sin dejar de entender lo que entregamos. Escribirlo
-con nuestras palabras; no lo debe redactar la IA.]
+Una sola puerta de entrada (el CSV) y todo lo que trae se trata como no
+confiable: login con contraseña en hash BCrypt, validación en la frontera
+(solo `.csv`, 10 MB, longitudes, montos y fechas), consultas
+parametrizadas con ataque SQLi probado, XSS frenado con `textContent` y
+CSP, fórmulas de Excel neutralizadas, secretos en `.env`, errores sin
+información interna y auditoría sin datos personales. Lo que falta
+(HTTPS, roles, límite de intentos, CSRF) está declarado como deuda y es
+aceptable solo mientras DAC corra en `localhost` con datos ficticios.
+
+## 7. Qué haríamos distinto
+
+1. **Empezar con una sola tecnología desde la semana 1.** Mantuvimos
+   Python y Java en paralelo y terminaron comportándose distinto. La
+   consolidación (D-18) costó una semana que pudo evitarse.
+2. **Tener la base de datos desde el esqueleto andante.** La idempotencia
+   empezó limitada "a una carga" porque no había persistencia; con la base
+   desde el inicio, el problema duro se habría resuelto completo antes.
+3. **Validar las reglas de negocio con un analista real.** El umbral de
+   fraccionamiento, la normalización de nombres y el manejo de filas
+   incompletas son provisionales (D-12, D-19, D-20) porque nunca tuvimos
+   ese interlocutor.
+4. **Medir desde el principio.** Los RNF se midieron en el Módulo 7; antes
+   no sabíamos que la carga se volvía lenta con archivos grandes.
+5. **Respetar siempre la revisión cruzada.** Algunos PR los fusionó su
+   propio autor; la regla de revisar antes de fusionar debió aplicarse en
+   todos.
+
+## 8. Uso de IA
+
+Declaración completa en [uso de IA](uso-ia.md): qué herramienta, para qué,
+qué se aceptó, qué se modificó, qué se rechazó y cómo se verificó. Regla
+del equipo: nada generado por IA entra a `main` sin pruebas en verde y sin
+que alguien del equipo pueda explicarlo.

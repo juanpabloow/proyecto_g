@@ -130,6 +130,12 @@ demostraciones 4 (la misma carga dos veces) y 9 (reinicio del servidor).
   idempotentes por construcción, pero no quedan guardadas
   ([DT-01](deuda-tecnica.md)).
 
+**Historia del alcance.** En la primera entrega el alcance era solo la
+idempotencia *dentro de una carga*, porque no había base de datos y
+prometer más habría sido falso (Decisión 7). Con la persistencia
+(Decisión 14) y HU-06/HU-07, hoy cubre también recargas, ejecuciones
+distintas y conflictos.
+
 ## 8. Criterios de aceptación
 
 - [x] Un CSV con la misma clave repetida N veces produce **un** contrato.
