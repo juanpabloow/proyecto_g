@@ -52,31 +52,38 @@ hace imposible guardar dos contratos con el mismo número en la misma
 entidad, y `ContratoServicio` consulta por clave natural antes de
 insertar (HU-07).
 
-**Regla de conflicto (gana el primero).** Si dos filas comparten la clave
-pero traen datos distintos —por ejemplo un monto corregido— se conserva
-**la primera** y la segunda se descarta sin avisar. Verificado: dos filas
-con clave `001 + E1` y montos `100` y `999` dejan un solo contrato con
-monto `100`.
+**Regla de conflicto (gana el primero, y se reporta).** Si dos filas
+comparten la clave pero traen datos distintos —por ejemplo un monto
+corregido— se conserva **la primera** y la segunda **no se pierde en
+silencio**: la respuesta de la carga la informa en `conflictos`, con los
+datos de las dos versiones, para que el analista decida
+([HU-06](historias-usuario.md), `ConflictosDeDuplicadosTest`).
 
-Es una decisión consciente y también una limitación: si la segunda fila
-era la corrección, se pierde. Registrar esos conflictos en lugar de
-descartarlos en silencio queda como trabajo futuro
-([HU-06](historias-usuario.md)).
+**Cargas simultáneas.** Si dos cargas intentan guardar el mismo contrato
+al mismo tiempo, la restricción de la base impide el duplicado y la API
+responde **409** con un mensaje que explica que no se guardó nada y se
+puede reintentar (S-09 en [seguridad y RNF](seguridad-y-rnf.md)).
+
+**Registro auditable.** Cada carga, aceptada o rechazada, queda en el
+registro `dac.auditoria` con fecha y cantidades (nuevos, duplicados
+ignorados, descartados), sin nombres de personas (S-07).
 
 ## 5. Qué queda cubierto y qué no
 
 | Escenario | ¿Cubierto? | Detalle |
 |---|---|---|
-| Fila duplicada dentro del mismo archivo | ✅ Sí | Se ignora la repetición |
-| Correr el programa dos veces con el mismo archivo | ✅ Sí | No hay estado acumulado: el resultado es idéntico |
-| Duplicado con datos distintos (adenda, corrección) | ⚠️ Parcial | Gana el primero, sin registro del conflicto (§4) |
-| Dos archivos distintos, en una misma ejecución, que comparten contratos | ❌ No | Cada llamada a `cargar_contratos` usa su propio conjunto de claves; unir las dos listas duplicaría |
-| Idempotencia entre ejecuciones (persistencia) | ❌ No | No hay base de datos todavía. Es el siguiente paso del roadmap |
-| Dos personas cargando archivos al mismo tiempo (concurrencia) | ❌ No | Riesgo conocido y aceptado para este MVP |
+| Fila duplicada dentro del mismo archivo | ✅ Sí | Se ignora la repetición antes de detectar alertas |
+| El mismo archivo cargado dos o más veces | ✅ Sí | La base ya tiene el contrato: `contratosNuevos: 0`. Medido en RNF-2: 10 recargas, 0 duplicados en 10 de 10 |
+| Dos archivos distintos que comparten contratos | ✅ Sí | La segunda carga reconoce los contratos que ya están en la base |
+| Idempotencia entre ejecuciones (persistencia) | ✅ Sí | Restricción `uq_contrato_clave_natural` en PostgreSQL (HU-07) |
+| Duplicado con datos distintos (adenda, corrección) | ✅ Reportado | Gana el primero y el conflicto se informa (HU-06). Qué versión debe ganar sigue pendiente de validar con un analista (S-1) |
+| Dos personas cargando al mismo tiempo (concurrencia) | ⚠️ Parcial | La base impide el duplicado y la API responde 409; falta una prueba automática que provoque la carrera (DT-09) |
 
-**El alcance real de esta entrega es la idempotencia *dentro de una
-carga*.** Está dicho así, y no como "idempotencia total", a propósito:
-prometer el caso persistente sin base de datos sería falso.
+**Historia del alcance.** En la primera entrega el alcance era solo la
+idempotencia *dentro de una carga*, porque no había base de datos y
+prometer más habría sido falso (Decisión 7). Con la persistencia
+(Decisión 14) y HU-06/HU-07, hoy cubre también recargas, ejecuciones
+distintas y conflictos.
 
 ## 6. Criterios de aceptación
 
@@ -94,5 +101,8 @@ prometer el caso persistente sin base de datos sería falso.
 | *la misma clave natural repetida se carga una sola vez* | La clave repetida se carga una sola vez |
 | *un contrato duplicado no genera una alerta falsa* | El duplicado no se convierte en reincidencia (§2, punto 3) |
 | *ante datos distintos con la misma clave, gana el primero* | La regla de conflicto de §4 |
+| `ConflictosDeDuplicadosTest` | El duplicado con datos distintos se reporta como conflicto (HU-06) |
+| `RequisitosNoFuncionalesTest` (RNF-2) | 1.000 contratos cargados 10 veces: 0 duplicados en 10 de 10 |
+| `AuditoriaTest` | Cada carga queda registrada y el registro no acepta líneas inyectadas |
 | *el mismo número en entidades distintas son dos contratos* | El mismo `numero_contrato` en dos entidades **no** se deduplica |
 | `ContratoE2ETest` → `e2e_carga_persiste_y_es_idempotente` | La misma carga dos veces no duplica nada en la base (HU-07) |
