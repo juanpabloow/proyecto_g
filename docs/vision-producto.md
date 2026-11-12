@@ -68,26 +68,34 @@ Consecuencias de diseño que se derivan de esto:
 El mapa completo de partes interesadas está en
 [stakeholders.md](stakeholders.md).
 
-## 6. Alcance de esta entrega (MVP)
+## 6. Alcance de la entrega final
+
+El MVP empezó con una sola señal y sin base de datos. Al cierre (noviembre
+de 2026) el alcance es este; el estado de cada historia está en
+[backlog.md](backlog.md).
 
 **Dentro:**
 
-1. Cargar contratos desde un archivo CSV, validando las columnas
-   requeridas.
-2. Ignorar contratos ya cargados (idempotencia dentro de la carga).
-3. Detectar **una** señal: reincidencia contratista–funcionario.
-4. Mostrar cada alerta con los contratos que la originaron.
+1. Cargar contratos desde un archivo CSV, validando columnas, campos y
+   tipos en la frontera (HU-01, HU-04).
+2. **Idempotencia dentro de la carga y entre ejecuciones**: los contratos se
+   guardan en PostgreSQL y una recarga no duplica nada (HU-07, el
+   [problema duro](problema-duro.md)).
+3. Dos señales, cada una con los contratos que la originaron:
+   reincidencia contratista–funcionario (HU-02) y fraccionamiento (HU-03).
+4. Nombres escritos de forma distinta reconocidos como el mismo (HU-05) y
+   duplicados con datos distintos reportados (HU-06).
+5. Interfaz web con inicio de sesión y exportación del reporte a Excel (HU-08).
 
-**Fuera, y documentado como trabajo futuro:**
+**Fuera, y documentado:**
 
-| Fuera del MVP | Por qué | Dónde queda registrado |
+| Fuera del alcance | Por qué | Dónde queda registrado |
 |---|---|---|
-| Detección de fraccionamiento de contratos | Preferimos una señal bien sustentada a cuatro a medias | [HU-03](historias-usuario.md) |
-| Tablero visual | El valor está en la señal, no en la presentación | Roadmap, abajo |
 | Integración con SECOP | Requiere credenciales y modelo de datos real | [Decisión 3](decisiones-tecnicas.md) |
-| Persistencia entre ejecuciones | Sin base de datos todavía | [Problema duro, §5](problema-duro.md) |
-| Carga concurrente por dos usuarios | Riesgo conocido, no resuelto | [Problema duro, §5](problema-duro.md) |
-| Normalización de nombres ("ACME SAS" vs "ACME S.A.S.") | Requiere reglas de negocio que aún no están validadas con un analista | [Reglas de negocio, R-5](reglas-de-negocio.md) |
+| Roles y varios usuarios | Hoy hay un solo analista en `localhost` | [DT-03](deuda-tecnica.md) |
+| Despliegue en un servidor (HTTPS, cifrado, endurecimiento de la base) | Sin despliegue no hay tráfico por la red; condición para usar datos reales | [DT-14, DT-19, DT-21](deuda-tecnica.md) |
+| Carga concurrente por dos usuarios con prueba automática | La base ya impide el duplicado y responde 409; falta la prueba | [DT-09](deuda-tecnica.md) |
+| Reglas de negocio validadas por un analista real | Umbral, ventana, tope y normalización los propuso el equipo | [DT-02](deuda-tecnica.md) |
 
 ## 7. Cómo se ve el éxito
 
@@ -108,10 +116,11 @@ El mapa completo de partes interesadas está en
 
 ## 9. Roadmap
 
-| Iteración | Foco |
-|---|---|
-| **Actual** | Esqueleto andante: carga idempotente + señal de reincidencia + pruebas |
-| Siguiente | Persistir contratos (base de datos) para que la idempotencia sobreviva entre ejecuciones |
-| Después | Segunda señal: fraccionamiento ([HU-03](historias-usuario.md)) |
-| Después | Tablero visual y exportación del reporte de alertas |
-| Largo plazo | Integración con SECOP y manejo de concurrencia |
+| Iteración | Foco | Estado |
+|---|---|---|
+| Esqueleto andante | Carga idempotente + señal de reincidencia + pruebas | ✅ Hecho (agosto–septiembre de 2026) |
+| Persistencia | Contratos y alertas en PostgreSQL: la idempotencia sobrevive entre ejecuciones (HU-07) | ✅ Hecho (septiembre de 2026) |
+| Backlog completo | Fraccionamiento, nombres, conflictos, exportación e interfaz web | ✅ Hecho (octubre de 2026) |
+| Seguridad y RNF | Checklist, login, RNF medidos, observabilidad | ✅ Hecho (octubre–noviembre de 2026) |
+| Siguiente | Validar las reglas con un analista real (DT-02) y guardar el fraccionamiento (DT-01) | Pendiente |
+| Largo plazo | Despliegue seguro, roles, integración con SECOP | Pendiente |

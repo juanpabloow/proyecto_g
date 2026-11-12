@@ -10,6 +10,11 @@ que el analista pueda verificarla en segundos. DAC **no acusa a nadie**:
 una alerta es una hipótesis a verificar por una persona
 ([por qué](docs/vision-producto.md)).
 
+## Video de la entrega
+
+**[COMPLETAR: enlace al video]** (3 minutos; guion en
+[docs/demo-entrega-final.md](docs/demo-entrega-final.md#guion-del-video-3-minutos)).
+
 ## Integrantes
 
 | Integrante | Rol | Ficha |
@@ -23,7 +28,7 @@ una alerta es una hipótesis a verificar por una persona
 [![CI](https://github.com/juanpabloow/proyecto_g/actions/workflows/ci.yml/badge.svg)](https://github.com/juanpabloow/proyecto_g/actions/workflows/ci.yml)
 
 - **Las 8 historias del backlog están hechas**, cada una con sus pruebas
-  ([historias de usuario](docs/historias-usuario.md)).
+  ([historias de usuario](docs/backlog.md)).
 - **Dos señales de alerta**, cada una con los contratos que la originaron:
   - **Reincidencia** (HU-02): el mismo contratista con el mismo
     funcionario en 2 o más contratos, aunque sean de entidades distintas.
@@ -38,7 +43,7 @@ una alerta es una hipótesis a verificar por una persona
 - Las filas incompletas se descartan y se reportan (HU-04).
 - **Interfaz web** en http://localhost:8080 para cargar el CSV, ver las
   alertas con su evidencia y **exportar el reporte** a Excel (HU-08).
-- **88 pruebas automatizadas:** 59 de dominio y 29 de punta a punta por
+- **93 pruebas automatizadas:** 63 de dominio y 30 de punta a punta por
   HTTP real contra PostgreSQL, incluidas pruebas de ataques simulados y la
   medición de los dos requisitos no funcionales. Corren solas en cada Pull
   Request (GitHub Actions).
@@ -63,7 +68,7 @@ proyecto**.
 cp .env.example .env        # 1. secretos locales: edítalo y cambia las claves
 docker compose up -d        # 2. PostgreSQL 16 y el visor web de la base
 ./mvnw spring-boot:run      # 3. DAC en http://localhost:8080 (deja esta terminal abierta)
-./mvnw verify               # 4. en otra terminal: compila y corre las 88 pruebas
+./mvnw verify               # 4. en otra terminal: compila y corre las 93 pruebas
 ```
 
 ### 1. El archivo `.env`
@@ -113,8 +118,8 @@ solo para leerla formateada: si no lo tienes, quita el `| jq`.
 ### Pruebas
 
 `./mvnw verify` necesita la base corriendo. Esperado:
-`Tests run: 88, Failures: 0, Errors: 0, Skipped: 0` y `BUILD SUCCESS`. Las
-59 de dominio no usan la base. Las 29 de punta a punta sí, y **vacían sus
+`Tests run: 93, Failures: 0, Errors: 0, Skipped: 0` y `BUILD SUCCESS`. Las
+63 de dominio no usan la base. Las 30 de punta a punta sí, y **vacían sus
 tablas** (`TRUNCATE`): no las corras sobre datos que quieras conservar.
 
 `java/ejecutar.sh` sigue existiendo como atajo (`run`, `dev`, `build`) sobre
@@ -149,7 +154,7 @@ curl -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" \
 
 Sin `-u` la API responde `401`.
 
-Responde `contratosNuevos`, `totalEnBd`, `duplicadosIgnorados`,
+Responde `contratosNuevos`, `contratosYaGuardados`, `totalEnBd`, `duplicadosIgnorados`,
 `filasDescartadas`, `conflictos`, `alertas` y `alertasFraccionamiento`
 con su evidencia. Otros endpoints:
 
@@ -209,7 +214,7 @@ curl -s -u "$DAC_AUTH_USER:$DAC_AUTH_PASSWORD" -F archivo=@data/contratos_ejempl
 → `contratosNuevos: 0`, `totalEnBd: 5`. El archivo se cargó dos veces y
 no se duplicó nada, ni los contratos ni la alerta. No depende de que el
 programa se acuerde: lo impide la restricción `uq_contrato_clave_natural`
-de la base de datos ([HU-07](docs/historias-usuario.md)).
+de la base de datos ([HU-07](docs/backlog.md)).
 
 ### Momento 3 — filas incompletas (HU-04)
 
@@ -364,15 +369,17 @@ dónde buscar algo.
 | [Visión del producto](docs/vision-producto.md) | Qué problema resuelve, para quién, alcance y métricas de éxito |
 | [Stakeholders](docs/stakeholders.md) | Quiénes están involucrados y qué exige cada uno del diseño |
 | [Problema duro](docs/problema-duro.md) | Idempotencia: por qué es el problema duro y hasta dónde está resuelto |
-| [Historias de usuario](docs/historias-usuario.md) | Las 8 historias con sus criterios y las pruebas que los verifican |
+| [Backlog](docs/backlog.md) | Las 8 historias con su estado, cada criterio con su prueba Java, y la trazabilidad historia → código → prueba → commit → demostración |
 | [Reglas de negocio](docs/reglas-de-negocio.md) | Qué cuenta como alerta, glosario del dominio y limitaciones conocidas |
-| [Diagrama de dominio](docs/diagrama-dominio.md) | Las clases del sistema y por qué están modeladas así |
+| [Modelo de dominio](docs/modelo-dominio.md) | Las clases Java reales (campos, métodos y relaciones) en Mermaid |
 | [Esquema de base de datos](docs/esquema-bd.md) | Modelo entidad–relación: qué se guarda y cómo se relaciona |
 | [Modelo físico](db/schema.sql) | El esquema anterior traducido a PostgreSQL, ejecutable |
 | [Módulo Java — HU-04](docs/modulo-java-hu04.md) | Qué entrega el módulo Java, cómo se relaciona con las demás historias y cómo demostrarlo |
 | [Decisiones técnicas](docs/decisiones-tecnicas.md) | Por qué se decidió cada cosa y qué se descartó |
 | [Equipo](docs/Equipo/) | Rol y aporte de cada integrante |
-| [Seguridad y RNF](docs/seguridad-y-rnf.md) | Checklist de seguridad aplicado, modelo de amenazas, los 2 RNF medidos y la deuda de seguridad |
+| [Seguridad y RNF](docs/seguridad-y-rnf.md) | Checklist de seguridad, superficie de entrada, RNF medidos, OWASP Top 10:2025 |
 | [Evidencias por semana](docs/seguridad/) | Semana 13 (seguridad) y semana 14 (RNF con gráficas y release 0.3) |
 | [Deuda técnica](docs/deuda-tecnica.md) | Con qué deuda nos quedamos, cuánto cuesta no pagarla y cómo se paga |
-| [Uso de IA](docs/uso-ia.md) | Declaración del uso de la IA en cada entrega y postura del equipo |
+| [Uso de IA](docs/uso-ia.md) | Registro por actividad del uso de la IA y postura del equipo |
+| [Paquete para la entrevista](docs/paquete-entrevista.md) | Problema, problema duro, métricas reales y decisiones, para preparar la entrevista |
+| [Guion de demostración](docs/demo-entrega-final.md) | Una demostración por historia, control de seguridad y RNF, verificada en vivo |

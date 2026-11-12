@@ -14,8 +14,9 @@ debe salir**.
 
 ## Antes de empezar
 
-Requiere Docker, JDK 21+, Maven, `jq` y, para la demostración 15, k6
-(`brew install k6`). Abre **dos terminales** en la raíz del proyecto.
+Requiere Docker, JDK 21+, `jq` y, para la demostración 15, k6
+(`brew install k6`). Maven no hace falta: se usa el Maven Wrapper (`./mvnw`).
+Abre **dos terminales** en la raíz del proyecto.
 
 En la **terminal 2** (la de los comandos), una sola vez:
 
@@ -36,10 +37,11 @@ estado() { curl -s -u "$AUTH" "$BASE/api/alertas" | jq -c '{totalEnBd, reinciden
 
 ## 0. Reiniciar a estado limpio y arrancar todo desde cero
 
-**Demuestra:** RNF-7 (despliegue): DAC se levanta desde cero con los pasos
-del README.
+**Demuestra:** RNF-7 (despliegue): DAC se levanta desde cero con los
+comandos de la guía de entrega, los mismos del README.
 
-1. Si es la primera vez: `cp .env.example .env` y cambia las tres claves.
+1. Si es la primera vez: `cp .env.example .env` y cambia las tres claves
+   (`DB_PASSWORD`, `DAC_AUTH_PASSWORD`, `GRAFANA_ADMIN_PASSWORD`).
 2. Terminal 2, base desde cero (borra el volumen de la base de demostración):
 
    ```bash
@@ -52,7 +54,7 @@ del README.
    El `TRUNCATE` vacía los 5 contratos que siembra `db/datos.sql`, para que
    la primera carga muestre el contraste. Para repetir la demostración
    después, basta con esa última línea.
-3. Terminal 1: `java/ejecutar.sh` (con la credencial de `.env`).
+3. Terminal 1: `./mvnw spring-boot:run` (lee la credencial de `.env`).
 4. Terminal 2: `curl -s $BASE/actuator/health`
 
 **Resultado esperado:** `TRUNCATE TABLE` y luego
@@ -141,6 +143,17 @@ docker exec dac_db psql -U dac_user -d dac -tAc "select count(*) from contrato"
 ```
 
 → `5`
+
+**Registro auditable** (en la terminal 1, la del servidor): cada carga deja
+una línea, y la recarga se reconoce porque dice `nuevos=0` y todos sus
+contratos en `yaGuardados`:
+
+```
+AUDITORIA carga aceptada archivo="contratos_ejemplo.csv" bytes=406 nuevos=5 yaGuardados=0 duplicadosEnArchivo=0 totalEnBd=5 descartadas=0 conflictos=0 reincidencias=1 fraccionamientos=1
+AUDITORIA carga aceptada archivo="contratos_ejemplo.csv" bytes=406 nuevos=0 yaGuardados=5 duplicadosEnArchivo=0 totalEnBd=5 descartadas=0 conflictos=0 reincidencias=1 fraccionamientos=1
+```
+
+La línea no lleva nombres de personas, solo cantidades (S-07).
 
 ---
 
@@ -247,8 +260,8 @@ docker exec dac_db psql -U dac_user -d dac -tAc "select monto from contrato wher
 
 **Demuestra:** HU-07 (persistencia en PostgreSQL).
 
-1. Terminal 1: `Ctrl+C` para detener el servidor y `java/ejecutar.sh` para
-   arrancarlo otra vez.
+1. Terminal 1: `Ctrl+C` para detener el servidor y `./mvnw spring-boot:run`
+   para arrancarlo otra vez.
 2. En el navegador, recarga la página (la sesión anterior se perdió con el
    reinicio: vuelve a entrar).
 
@@ -389,34 +402,35 @@ curl -s -u "$AUTH" $BASE/actuator/prometheus | grep -m1 '^http_server_requests_s
 ## 15. k6: 200 usuarios concurrentes
 
 **Demuestra:** RNF-3 (escalabilidad): menos del 1 % de errores y p95 de
-`/api/alertas` ≤ 1.500 ms.
+`/api/alertas` ≤ 1.500 ms, con el protocolo del curso (tres corridas, se
+descarta la primera).
 
 ```bash
-k6 run -e CONTRATOS=1200 rnf/k6-cargar-datos.js                                         # datos con semilla fija
-k6 run -e AUTH_MODO=sesion --summary-export /tmp/k6-sesion.json rnf/k6-concurrencia.js  # como el navegador (≈1 min)
-k6 run --summary-export /tmp/k6-basic.json rnf/k6-concurrencia.js                       # Basic en cada petición (≈1 min)
+k6 run -e CONTRATOS=1200 rnf/k6-cargar-datos.js          # datos con semilla fija
+for n in 1 2 3; do                                       # modo sesión, como el navegador (≈1 min cada una)
+  k6 run -e AUTH_MODO=sesion --summary-export /tmp/k6-sesion-$n.json rnf/k6-concurrencia.js > /tmp/k6-sesion-$n.txt
+done
+for n in 2 3; do jq -c "{corrida: $n, p95_ms: .metrics[\"http_req_duration{endpoint:alertas}\"][\"p(95)\"], errores: .metrics.http_req_failed.value}" /tmp/k6-sesion-$n.json; done
 ```
 
 **Dónde ver el resultado:** al final de cada corrida, en el bloque
-**THRESHOLDS**: `http_req_duration{endpoint:alertas}` (p95) y
-`http_req_failed` (% de errores). O bien:
-
-```bash
-jq '{p95_ms: .metrics["http_req_duration{endpoint:alertas}"]["p(95)"], errores: .metrics.http_req_failed.value}' /tmp/k6-sesion.json /tmp/k6-basic.json
-```
+**THRESHOLDS** de `/tmp/k6-sesion-<n>.txt`:
+`http_req_duration{endpoint:alertas}` (p95) y `http_req_failed` (% de
+errores). El `jq` resume las corridas 2 y 3.
 
 **Resultado esperado:**
 
-- Carga de datos: `nuevos=1200 totalEnBd=1223` (los 1.200 de k6 más los 23 de
-  las demostraciones anteriores).
-- **Modo sesión: cumple.** Los tres umbrales con ✓; `http_req_failed` 0,00 %;
-  p95 de `/api/alertas` por debajo de 1.500 ms (**502 ms** en esta
-  verificación; 777 ms en la medición registrada en `docs/seguridad/`).
-- **Modo Basic: no cumple el p95**, y es lo esperado: 0,00 % de errores,
-  pero el p95 supera 1.500 ms (**1,99 s** en esta verificación) y k6
-  termina con `thresholds on metrics 'http_req_duration{endpoint:alertas}'
-  have been crossed`. Es la deuda D-7 de
-  [seguridad-y-rnf.md](seguridad-y-rnf.md): BCrypt en cada petición.
+- Carga de datos: `nuevos=1200 totalEnBd=1223` (los 1.200 de k6 más los 23
+  de las demostraciones anteriores).
+- **Corridas 2 y 3: cumplen.** Los tres umbrales con ✓, `errores: 0` y p95
+  por debajo de 1.500 ms (685 y 917 ms en esta verificación; 567 y
+  761 ms en la medición registrada en `docs/seguridad/`).
+
+**Variante informativa, Basic en cada petición** (no cumple, deuda
+[DT-17](deuda-tecnica.md)): `k6 run rnf/k6-concurrencia.js` termina con
+`thresholds on metrics 'http_req_duration{endpoint:alertas}' have been
+crossed` (p95 de 2,32 s en esta verificación) y 0 % de errores. La causa
+es BCrypt en cada petición.
 
 ---
 
@@ -443,15 +457,16 @@ milisegundo (**0,011 · 0,009 · 0,010 ms**). Medición registrada:
 **Demuestra:** S-12, S-14, OWASP A02/A07.
 
 ```bash
-DAC_AUTH_PASSWORD= SERVER_PORT=8091 java/ejecutar.sh 2>&1 | grep -m1 -o "Falta la credencial del analista[^.]*"
+DAC_AUTH_PASSWORD= SERVER_PORT=8091 ./mvnw spring-boot:run 2>&1 | grep -m1 -o "Falta la credencial del analista[^.]*"
 docker port dac_db
 docker port dac_adminer
 ```
 
 **Resultado esperado:**
 `Falta la credencial del analista: define DAC_AUTH_USER y DAC_AUTH_PASSWORD en el archivo `
-(la aplicación no arranca sin clave; con `java/ejecutar.sh dev` sí arranca,
-con la credencial demo), `5432/tcp -> 127.0.0.1:5433` y
+(la aplicación no arranca sin clave; con
+`./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` sí arranca, con la
+credencial demo), `5432/tcp -> 127.0.0.1:5433` y
 `8080/tcp -> 127.0.0.1:8081`.
 
 ---
@@ -480,51 +495,111 @@ http://localhost:3000.
 
 ## 19. Pruebas automáticas
 
-**Demuestra:** RNF-5 (mantenibilidad), RNF-1 y RNF-2 medidos, y todos los
-ataques simulados.
+**Demuestra:** RNF-5 (mantenibilidad), RNF-1 y RNF-2 medidos con el
+protocolo del curso, y todos los ataques simulados.
 
-> ⚠️ Las pruebas de punta a punta **vacían las tablas** (`TRUNCATE`). Déjala
-> para el final.
+> ⚠️ Las pruebas de punta a punta **vacían las tablas** (`TRUNCATE`). Déjalo
+> para el final de la parte con datos.
 
 ```bash
-cd java && mvn test; cd ..
+./mvnw verify
+cat java/target/rnf/resultados.md
 ```
 
-**Resultado esperado:** `Tests run: 88, Failures: 0, Errors: 0, Skipped: 0`
-y `BUILD SUCCESS`. La medición de RNF-1 y RNF-2 queda en
-`java/target/rnf/resultados.md`. Al terminar, la base conserva los
-contratos de la última prueba: para volver a demostrar, ejecuta el
-`TRUNCATE` de la demostración 0.
+**Resultado esperado:** `Tests run: 93, Failures: 0, Errors: 0, Skipped: 0`
+y `BUILD SUCCESS`. `resultados.md` trae la fecha, el commit, el equipo y las
+corridas 1 (descartada), 2 y 3 de RNF-1 y RNF-2. Al terminar, la base
+conserva los contratos de la última prueba: para volver a demostrar,
+ejecuta el `TRUNCATE` de la demostración 0.
+
+---
+
+## 20. Cadena de trazabilidad completa de HU-02
+
+**Demuestra:** que una historia se puede seguir de punta a punta: backlog →
+código → prueba → commit → demostración.
+
+```bash
+grep -n "HU-02 Reincidencia" docs/backlog.md                                   # 1. backlog: fila de trazabilidad
+grep -n "public List<Alerta> detectar" java/src/main/java/dac/dominio/DetectorDeReincidencias.java   # 2. código
+./mvnw -q -pl java test -Dtest=DetectorDeReincidenciasTest 2>&1 | grep "Tests run" | tail -1        # 3. prueba
+git show --stat --format='%h %ad %s' --date=short b027f43 | grep -E "^b027f43|DetectorDeReincidencias"  # 4. commit
+```
+
+5. Demostración: la 3 de este guion (la alerta de ACME SAS + Juan Pérez con
+   sus 3 contratos).
+
+**Resultado esperado:**
+
+```
+232:| HU-02 Reincidencia | `dominio/DetectorDeReincidencias`, …
+20:    public List<Alerta> detectar(List<Contrato> contratos) {
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0
+b027f43 2026-09-09 feat: migrar stack backend a Spring Boot + PostgreSQL (HU-07)
+ .../java/dac/dominio/DetectorDeReincidencias.java  |  31 ++++
+```
+
+---
+
+## 21. La integración continua en verde
+
+**Demuestra:** que cada Pull Request corre la suite completa contra
+PostgreSQL real (`.github/workflows/ci.yml`, con `./mvnw -B verify`).
+
+- **En el navegador:** https://github.com/juanpabloow/proyecto_g/actions →
+  flujo **CI** → la ejecución más reciente de la rama o del Pull Request →
+  marca verde. En **Summary** está la medición de RNF-1 y RNF-2 del runner;
+  en **Artifacts**, `reporte-pruebas`.
+- **En el Pull Request:** pestaña **Checks**, o al pie de la conversación
+  ("All checks have passed").
+- **Por terminal** (con la CLI de GitHub):
+
+  ```bash
+  gh pr checks 10
+  ```
+
+**Resultado esperado:** `pruebas	pass	…` con el enlace a la ejecución.
+
+---
+
+## Guion del video (3 minutos)
+
+Un tramo cada 30 segundos. Antes de grabar: demostración 0 hecha, servidor
+corriendo, navegador en la pantalla de login y una terminal con la
+preparación de "Antes de empezar".
+
+| Tiempo | Qué se muestra | Qué se dice |
+|---|---|---|
+| 0:00–0:30 | Pantalla de login → entrar con la credencial de `.env` | "DAC detecta señales de posible soborno en contratos públicos. Cada alerta trae los contratos que la originaron: no acusa, da evidencia para verificar. Sin sesión no se ve nada." |
+| 0:30–1:00 | Cargar `data/contratos_ejemplo.csv` → pestaña **Reincidencia** | "Cinco contratos. ACME SAS aparece con el mismo funcionario en tres contratos, en dos entidades: una alerta, con número, entidad, fecha y monto de cada contrato." |
+| 1:00–1:30 | Pestaña **Fraccionamiento**; luego cargar `data/contratos_nombres_variantes_ejemplo.csv` | "Segunda señal: dos contratos de ACME en la Gobernación que suman el tope en menos de 30 días. Y nombres escritos distinto, con tildes o puntos, se reconocen como el mismo contratista." |
+| 1:30–2:00 | **Problema duro:** volver a cargar `data/contratos_ejemplo.csv` → "Listo: 0 contrato(s) nuevo(s)." | "El problema duro es la idempotencia. Un contrato contado dos veces parece una reincidencia: el sistema inventaría la señal. Cargo el mismo archivo otra vez: cero nuevos." |
+| 2:00–2:30 | Terminal: la línea `AUDITORIA … nuevos=0 yaGuardados=5` y `select count(*) from contrato` → 5 | "Queda auditado: cero nuevos, cinco ya guardados, sin nombres de personas. Y no depende del código: la base lo impide con una restricción única sobre número y entidad." |
+| 2:30–3:00 | `./mvnw verify` ya ejecutado (BUILD SUCCESS) y la pestaña **Checks** del PR en verde | "La suite de punta a punta contra PostgreSQL real y las mediciones de rendimiento corren en cada Pull Request. Lo que falta está priorizado en la deuda técnica." |
 
 ---
 
 ## Registro de la verificación (11 de noviembre de 2026)
 
-Ejecutado en orden, desde `docker compose down -v`, en un Apple M4 Pro con
-macOS y zsh. El servidor de la verificación corrió en el puerto **8090**
-(`SERVER_PORT=8090 java/ejecutar.sh`, con `BASE=http://localhost:8090`)
-porque el 8080 estaba ocupado por otra instancia. Los comandos son los de
-este documento; solo cambia el puerto en `BASE` y en las URL de respuesta.
+Ejecutado en orden, desde `docker compose down -v`, con
+`./mvnw spring-boot:run` en **http://localhost:8080**, en un Apple M4 Pro
+con macOS y zsh. Los pasos de la interfaz se hicieron en Chrome, conducido
+por un script.
 
-| # | Demostración | Cómo se ejecutó | Resultado real |
-|---|---|---|---|
-| 0 | Arranque desde cero | Terminal | ✅ `TRUNCATE TABLE`; health `UP` |
-| 1 | Login | Terminal + Chrome | ✅ 401 / 401 / 200 / 302 a `/login.html`; clave mala → "Usuario o contraseña incorrectos." |
-| 2 | HU-01 | Chrome | ✅ "Listo: 5 contrato(s) nuevo(s)."; `{"totalEnBd":5,"reincidencias":1,"fraccionamientos":1}` |
-| 3 | HU-02 | Chrome + terminal | ✅ ACME SAS + Juan Pérez, 3 contratos (001, 003, 005), $ 155.000.000 |
-| 4 | Problema duro | Chrome + terminal | ✅ "Listo: 0 contrato(s) nuevo(s)."; `count(*)` = 5 |
-| 5 | HU-03 | Chrome + terminal | ✅ 2 fraccionamientos de $ 105.000.000 (003+005 y 401+402+403) |
-| 6 | HU-04 | Chrome y, aparte, terminal | ✅ 4 nuevos, 1 repetido, filas 5, 6 y 7 descartadas con su motivo |
-| 7 | HU-05 | Chrome + terminal | ✅ Constructora Andina S.A.S. + María Gómez con 301, 302 y 303; el 304 (LTDA) aparte |
-| 8 | HU-06 | Chrome + terminal | ✅ 2 conflictos (601 contra la fila 3 en monto y fecha; 001 contra la base en monto); el 001 sigue en 50000000.00 |
-| 9 | HU-07 | Reinicio del servidor + Chrome | ✅ Tras reiniciar: pide login otra vez y siguen 19 contratos, 4 reincidencias y 3 fraccionamientos |
-| 10 | HU-08 + salir | Chrome + terminal | ✅ `efbbbf`, encabezado, 22 líneas; descarga de la interfaz idéntica; "Cerraste sesión." y luego API 401 |
-| 11 | SQLi y XSS | Chrome + terminal | ✅ Nombres mostrados como texto, 0 ventanas de alerta, 0 elementos `<script>`/`<img>` creados; 23 contratos; nombres guardados tal cual |
-| 12 | Validaciones | Terminal | ✅ 400 (.csv), 413 (10 MB), 400 "Fila 3…" (negativo), 400 "Fila 2…" (fecha); total sin cambios (23) |
-| 13 | Cabeceras en el 401 | Terminal | ✅ `nosniff`, `DENY` y la CSP completa en el 401 |
-| 14 | Actuator | Terminal | ✅ health 200; prometheus 401; info 401; con credenciales, métricas en formato Prometheus |
-| 15 | k6, 200 usuarios | Terminal | ✅ Sesión: 0,00 % de errores, p95 502 ms (cumple). Basic: 0,00 % de errores, p95 1,99 s (no cumple, como se declara) |
-| 16 | EXPLAIN ANALYZE | Terminal | ✅ 5023 contratos; `findAllConFetch` 2,6–3,5 ms; clave natural con Index Scan, unos 0,01 ms |
-| 17 | Sin credencial por defecto y puertos | Terminal | ✅ "Falta la credencial del analista…"; `127.0.0.1:5433` y `127.0.0.1:8081`. Con `ejecutar.sh dev`, la credencial demo entra (200); en el servidor normal, no (401) |
-| 18 | Prometheus y Grafana | Terminal | ✅ objetivo `dac` `up` con autenticación; Grafana `admin/admin` → 401, clave de `.env` → 200 |
-| 19 | Pruebas | Terminal | ✅ `Tests run: 88, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS` |
+| # | Demostración | Resultado real |
+|---|---|---|
+| 0 | Arranque desde cero | ✅ `TRUNCATE TABLE`; health `UP` |
+| 1 | Login | ✅ 401 / 401 / 200 / 302 a `/login.html`; clave mala → "Usuario o contraseña incorrectos." |
+| 2–3 | HU-01, HU-02 | ✅ 5 nuevos; ACME SAS + Juan Pérez con 001, 003 y 005 |
+| 4 | Problema duro | ✅ 0 nuevos, 5 en la base, y las dos líneas de auditoría idénticas a las de arriba |
+| 5–8 | HU-03 a HU-06 | ✅ 2 fraccionamientos; filas 5, 6 y 7 descartadas; 301, 302 y 303 unidos; 2 conflictos y el 001 en 50000000.00 |
+| 9 | HU-07 | ✅ tras reiniciar con `./mvnw spring-boot:run`: 19 contratos, 4 reincidencias, 3 fraccionamientos |
+| 10 | HU-08 y salir | ✅ `efbbbf`, 22 líneas, descarga idéntica; "Cerraste sesión." y luego 401 |
+| 11 | SQLi y XSS | ✅ texto, 0 ventanas de alerta, 23 contratos, nombres guardados tal cual |
+| 12 | Validaciones | ✅ 400 / 413 / 400 "Fila 3" / 400 "Fila 2"; total sin cambios (23) |
+| 13–14 | Cabeceras y Actuator | ✅ cabeceras en el 401; health 200, prometheus e info 401 |
+| 15 | k6 | ✅ corridas 2 y 3: p95 685 y 917 ms, 0 % de errores; Basic: 2,32 s (no cumple, como se declara) |
+| 16–18 | EXPLAIN, credencial y puertos, observabilidad | Verificadas más temprano el mismo día con estos comandos (en esa corrida, con `java/ejecutar.sh` y el puerto 8090); no se repitieron en esta corrida |
+| 19 | Pruebas | ✅ `Tests run: 93, Failures: 0, Errors: 0, Skipped: 0`, BUILD SUCCESS |
+| 20 | Trazabilidad de HU-02 | ✅ (salida de arriba) |
+| 21 | CI | ✅ `gh pr checks 10` → `pruebas pass` |

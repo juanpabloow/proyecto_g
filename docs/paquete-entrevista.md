@@ -1,116 +1,96 @@
-# Paquete de entrevista — DAC (Detector de Alertas de Contratación)
+# Paquete para la entrevista
 
-Resumen de la evidencia más importante del proyecto, pensado para
-presentarlo en 5 minutos y defenderlo bajo preguntas. Cada afirmación
-apunta al archivo, la prueba o la medición que la respalda.
+Resumen para preparar la entrevista final: qué problema resolvimos, por
+qué es difícil, qué medimos y qué decidimos. Cada afirmación remite a la
+evidencia en el repositorio. Las cifras son las medidas, con sus
+condiciones; no hay estimaciones.
 
-**Equipo:** Juan Pablo Cardozo Rivera (backend) · Yerson Andrés Pérez
-Cadena (QA y pruebas) · Gerson Geovanni Rojo Rodríguez (requisitos y
-análisis de negocio). Aportes individuales en [Equipo/](Equipo/README.md).
+## 1. El problema que resolvimos
 
-**Demo grabada (3 min):** enlazada desde el [README](../README.md#demo-grabada).
+**Qué:** DAC (Detector de Alertas de Contratación) cruza los contratos
+públicos de un archivo CSV y marca dos señales de posible soborno o
+extorsión: **reincidencia** (el mismo contratista con el mismo funcionario
+en 2 o más contratos) y **fraccionamiento** (contratos pequeños del mismo
+contratista en la misma entidad que, en 30 días, alcanzan el tope de
+cuantía). Cada alerta trae los contratos exactos que la originaron.
 
----
+**Para quién y por qué vale la pena:** el analista de investigación
+(S-1) hoy hace ese cruce a mano en hojas de cálculo. Es lento y se le
+escapan coincidencias. DAC no acusa a nadie: la alerta es una hipótesis
+que una persona verifica, y por eso **sin evidencia no hay alerta**
+(HU-02, criterio 5; [vision-producto.md](vision-producto.md)).
 
-## 1. El problema resuelto y por qué importa
-
-Los analistas de investigación e inteligencia revisan a mano, en hojas de
-cálculo, miles de contratos públicos buscando señales de soborno o
-extorsión. Es lento y depende de que alguien "vea" el patrón.
-
-DAC recibe un CSV de contratos y detecta automáticamente dos señales:
-
-| Señal | Regla | Historia |
-|---|---|---|
-| **Reincidencia** | Mismo contratista con el mismo funcionario en 2 o más contratos, aunque sean de entidades distintas | HU-02 |
-| **Fraccionamiento** | Contratos pequeños del mismo contratista en la misma entidad que en 30 días suman el tope de cuantía | HU-03 |
-
-Cada alerta trae **los contratos exactos que la originaron**, para que el
-analista la verifique en segundos. DAC no acusa a nadie: una alerta es
-una hipótesis que una persona verifica ([visión](vision-producto.md),
-[stakeholders](stakeholders.md)).
-
-**Alcance entregado:** 8 de 8 historias con criterios de aceptación y
-pruebas ([historias de usuario](historias-usuario.md)), interfaz web,
-API REST, persistencia en PostgreSQL 16 e inicio de sesión del analista.
-
-**Cómo correrlo:** `docker compose up -d` · `./mvnw spring-boot:run` ·
-`./mvnw verify` (detalle en el [README](../README.md)).
+**Cómo se ve:** interfaz web con inicio de sesión; se arrastra el CSV y se
+ven las alertas con su evidencia, las filas descartadas y los conflictos,
+y se exporta el reporte a Excel. Las 8 historias están terminadas
+([backlog.md](backlog.md)).
 
 ## 2. El problema duro: idempotencia
 
-> Cargar el mismo contrato dos veces debe producir el mismo resultado
-> que cargarlo una vez.
+**Enunciado:** cargar el mismo contrato dos veces debe dar el mismo
+resultado que cargarlo una vez ([problema-duro.md](problema-duro.md)).
 
 **Por qué es difícil de verdad:** un duplicado no produce un error,
-produce una *alerta que parece válida*. El mismo contrato contado dos
-veces se ve exactamente igual que una reincidencia real: el sistema
-inventaría la señal que promete detectar ([problema duro](problema-duro.md)).
+produce una **reincidencia falsa**. El mismo contrato contado dos veces se
+ve exactamente igual que un contratista que repite con un funcionario: el
+sistema inventaría la señal que promete detectar, contra una persona real.
 
-**Mecanismo implementado:**
-
-1. **Clave natural** `numero_contrato + entidad` (Decisión 5).
-2. **Dentro de una carga:** `CargadorDeContratos` ignora la clave repetida
-   antes de detectar alertas.
-3. **Entre cargas y entre ejecuciones:** la restricción
-   `uq_contrato_clave_natural` de la base lo hace imposible, aunque el
-   código fallara (HU-07).
-4. **Conflictos:** si el duplicado trae datos distintos, no se pierde en
-   silencio: se reporta como conflicto (HU-06).
-5. **Cargas simultáneas:** la base sigue impidiendo el duplicado y la API
-   responde 409 con un mensaje claro (S-09).
-6. **Registro auditable:** cada carga queda en `dac.auditoria` con fecha y
-   cantidades, sin nombres de personas (S-07).
+**Mecanismo:**
+1. **Clave natural** `numero_contrato` + `entidad` (no el número solo, ni la fila completa).
+2. Dentro de una carga, se conserva la primera versión de cada clave.
+3. Entre cargas, lo impide **la base**: `uq_contrato_clave_natural`.
+4. Si el duplicado traía datos distintos, gana el primero y el conflicto se reporta (HU-06).
 
 **Evidencia:**
+- Pruebas: `CargadorDeContratosTest#deduplica_por_clave_natural`,
+  `CargadorDeContratosTest#el_duplicado_no_genera_alerta_falsa`,
+  `ContratoE2ETest#e2e_carga_persiste_y_es_idempotente`,
+  `RequisitosNoFuncionalesTest#rnf2_integridad_ante_recargas`.
+- Demostración en vivo: [demo-entrega-final.md](demo-entrega-final.md),
+  demostración 4 (la misma carga dos veces da 0 nuevos).
+- Registro de auditoría: cada carga deja una línea con los contratos
+  nuevos y los que ya estaban guardados (ver problema-duro.md).
 
-| Evidencia | Qué demuestra |
-|---|---|
-| `CargadorDeContratosTest` (grupo *Problema duro*) | La clave repetida se carga una vez y no genera alerta falsa |
-| `ContratoE2ETest` → `e2e_carga_persiste_y_es_idempotente` | Por HTTP real contra PostgreSQL: la misma carga dos veces no duplica nada |
-| `ConflictosDeDuplicadosTest` | El duplicado con datos distintos se reporta |
-| `RequisitosNoFuncionalesTest` (RNF-2) | 1.000 contratos cargados 10 veces: 0 duplicados en 10 de 10 |
-| Demo en vivo | Momento 2 del README: `contratosNuevos: 0` en la segunda carga |
+## 3. Métricas reales y sus condiciones
 
-**Límites que siguen existiendo:** la carga simultánea no tiene prueba
-automática (DT-09) y la regla para elegir entre dos versiones de un
-contrato en conflicto sigue pendiente de validar con un analista (S-1).
+Protocolo del curso: tres corridas, se descarta la primera y se informan
+la 2 y la 3. Todas las mediciones son del 11/11/2026, en un Apple M4 Pro
+(12 núcleos, Java 26, PostgreSQL 16 en Docker), sobre el código del commit
+`778634a`.
 
-## 3. Métricas reales y condiciones de medición
-
-Protocolo del curso: tres corridas medidas, la primera de calentamiento
-no cuenta. Detalle completo en [seguridad y RNF](seguridad-y-rnf.md).
-
-| RNF | Objetivo | Resultado | Condiciones |
+| Qué | Corridas 2 y 3 | Objetivo | Datos y carga |
 |---|---|---|---|
-| **RNF-1 Rendimiento** — cargar 5.000 contratos | ≤ 5 s | ✅ Peor de 3 corridas: **2.156 ms** (43 % del límite) | CI GitHub Actions, `ubuntu-24.04`, 4 núcleos, Java 21, PostgreSQL 16, datos ficticios de semilla fija |
-| **RNF-2 Integridad** — mismo archivo de 1.000 contratos, 10 recargas | 0 duplicados | ✅ **0 contratos nuevos en 10 de 10** | Igual que RNF-1, se mide en cada PR |
-| **RNF-3 Concurrencia** — 200 usuarios leyendo `/api/alertas` (k6) | < 1 % errores y p95 ≤ 1.500 ms | ✅ Con sesión: **0 % errores, p95 777 ms** · ❌ Con HTTP Basic en cada petición: p95 2,72 s | Local, macOS Apple Silicon, 1.200 contratos, pool de 10 conexiones |
+| RNF-1: cargar 5.000 contratos, con las dos señales calculadas | **1.509 ms** y **1.402 ms** | ≤ 5.000 ms | 5.000 contratos ficticios (semilla 2026), 1 usuario, base vacía |
+| RNF-2: 10 recargas del mismo archivo | **0 nuevos, 10 de 10 sin cambios** en las dos | 0 duplicados | 1.000 contratos ficticios (semilla 7) |
+| RNF-3: 200 usuarios a la vez en `GET /api/alertas`, con sesión | p95 **567 ms** y **761 ms**; **0 %** de errores | p95 ≤ 1.500 ms, < 1 % de errores | k6, 1.200 contratos (semilla 2026) |
+| RNF-3 con HTTP Basic en cada petición (una corrida, informativa) | p95 **2,72 s**, 0 % de errores: **no cumple** | Ídem | Causa: BCrypt en cada petición ([DT-17](deuda-tecnica.md)) |
+| SQL con 5.000 contratos (EXPLAIN ANALYZE) | `findAllConFetch` **2,46** y **2,34 ms**; clave natural **0,004** y **0,009 ms** (Index Scan) | — | PostgreSQL 16 en Docker |
+| Suite automática | Ver `./mvnw verify` en el README | 0 fallos | Local y GitHub Actions |
 
-**Antes y después de una optimización (Decisión 25):** la carga
-consultaba la base por cada fila y el tiempo crecía más rápido que el
-archivo. Se cambió a leer lo existente una sola vez y trabajar con
-índices en memoria; con eso RNF-1 cumple. `EXPLAIN ANALYZE` confirma que
-el SQL no es el cuello de botella (búsqueda por clave natural < 0,02 ms).
+El detalle de cada medición (operación, carga, datos, equipo y corridas)
+está en [seguridad-y-rnf.md](seguridad-y-rnf.md).
 
-**Lo que no cumple, dicho claro:** con HTTP Basic en cada petición, BCrypt
-(lento a propósito) hace que RNF-3 no cumpla. Queda como deuda D-7.
+## 4. Decisiones técnicas, con lo que descartamos
 
-**Pruebas:** 88 automatizadas (59 de dominio y 29 de punta a punta por
-HTTP real contra PostgreSQL), en verde en cada push y PR.
-
-## 4. Decisiones técnicas importantes y alternativas descartadas
-
-Registro completo en [decisiones técnicas](decisiones-tecnicas.md).
-
-| Decisión | Alternativa descartada | Por qué |
+| Decisión | Alternativas descartadas | Por qué |
 |---|---|---|
-| **El esquema lo gobierna `db/schema.sql`**, no Hibernate (D-15) | `ddl-auto=update` | Las restricciones que sostienen el problema duro no pueden quedar a merced del mapeo. El esquema real coincide con el documentado |
-| **Un solo lenguaje: Java 21 + Spring Boot** (D-18) | Mantener Python y Java en paralelo | Los dos programas no se comportaban igual: ante una fila sin contratista, Java la descartaba y Python generaba una alerta "sobre nadie". Se portaron todas las pruebas a JUnit |
-| **Una fila incompleta se descarta y se reporta; el archivo sigue siendo válido** (D-12) | Aceptarla, o invalidar todo el archivo | Aceptarla crea alertas sobre nadie; invalidar deja al analista sin nada por una fila mala entre 5.000 |
-| **Interfaz sin frameworks**, servida por el mismo Spring Boot (D-21) | React/Angular en un proyecto aparte | Un solo comando levanta todo y la interfaz no tiene lógica de negocio propia: usa la misma API que las pruebas |
+| **La identidad de un contrato es `numero_contrato` + `entidad`** (Decisión 5) | Solo el número; la fila completa; un id generado | Dos entidades repiten el consecutivo "001"; con la fila completa, un monto corregido pasaría como contrato nuevo; un id generado no reconoce un duplicado que llega de afuera |
+| **Una fila incompleta se descarta y se reporta; el archivo sigue siendo válido** (Decisión 12) | Aceptarla; invalidar el archivo completo | Aceptarla produce una alerta "sobre nadie"; invalidar el archivo deja al analista sin nada por una fila mala entre miles. Es provisional, pendiente de S-1 |
+| **Las pruebas de punta a punta entran por HTTP real, contra PostgreSQL real, sin mocks** (Decisión 16) | `MockMvc`; llamar directo al servicio | Con un socket real, la prueba falla si se rompe cualquier frontera (ruta, JSON, transacción, restricción de la base). Los mocks quedan para las pruebas unitarias de la capa de aplicación |
+| **Normalizar nombres de forma conservadora** (Decisión 19) | Comparación exacta; quitar también sufijos societarios y alias | La exacta escondía reincidencias reales; quitar sufijos uniría "ACME SAS" con "ACME LTDA" y señalaría a quien no es (S-6) |
 
-## 5. Seguridad en una frase por control
+Más en [decisiones-tecnicas.md](decisiones-tecnicas.md), incluidos los
+patrones de diseño aplicados y rechazados.
+
+## 5. Lo que sabemos que falta
+
+La deuda está priorizada en [deuda-tecnica.md](deuda-tecnica.md). Las
+más importantes:
+- Reglas sin validar con un analista real (DT-02).
+- El fraccionamiento no se guarda (DT-01).
+- Seguridad para desplegar: superusuario de la base, sin límite de intentos, sin HTTPS ni cifrado (DT-19, DT-20, DT-14, DT-21).
+
+## 6. Seguridad en una frase por control
 
 Una sola puerta de entrada (el CSV) y todo lo que trae se trata como no
 confiable: login con contraseña en hash BCrypt, validación en la frontera
@@ -121,7 +101,7 @@ información interna y auditoría sin datos personales. Lo que falta
 (HTTPS, roles, límite de intentos, CSRF) está declarado como deuda y es
 aceptable solo mientras DAC corra en `localhost` con datos ficticios.
 
-## 6. Qué haríamos distinto
+## 7. Qué haríamos distinto
 
 1. **Empezar con una sola tecnología desde la semana 1.** Mantuvimos
    Python y Java en paralelo y terminaron comportándose distinto. La
@@ -139,7 +119,7 @@ aceptable solo mientras DAC corra en `localhost` con datos ficticios.
    propio autor; la regla de revisar antes de fusionar debió aplicarse en
    todos.
 
-## 7. Uso de IA
+## 8. Uso de IA
 
 Declaración completa en [uso de IA](uso-ia.md): qué herramienta, para qué,
 qué se aceptó, qué se modificó, qué se rechazó y cómo se verificó. Regla

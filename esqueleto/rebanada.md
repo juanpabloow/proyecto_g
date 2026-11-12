@@ -293,7 +293,7 @@ classDiagram
     ContratoJpa --> FuncionarioJpa : id_funcionario
 ```
 
-> **Nota sobre `clavesVistas`.** En el modelo de dominio (`docs/diagrama-dominio.md:27`) es un campo de instancia de `CargadorDeContratos`. En esta implementación es una **variable local** dentro de `procesar(...)`, así que solo deduplica filas dentro de un mismo archivo. La idempotencia entre ejecuciones la garantiza la base de datos (`ContratoRepo.findByNumeroContratoAndEntidad` + `uq_contrato_clave_natural`), no la memoria del objeto. Por eso el campo no aparece en el diagrama.
+> **Nota sobre `clavesVistas`.** En el modelo de dominio (`docs/modelo-dominio.md:27`) es un campo de instancia de `CargadorDeContratos`. En esta implementación es una **variable local** dentro de `procesar(...)`, así que solo deduplica filas dentro de un mismo archivo. La idempotencia entre ejecuciones la garantiza la base de datos (`ContratoRepo.findByNumeroContratoAndEntidad` + `uq_contrato_clave_natural`), no la memoria del objeto. Por eso el campo no aparece en el diagrama.
 
 ---
 
@@ -355,25 +355,25 @@ Cada fila apunta a un **insumo de modelado** con su línea verificable. Los elem
 
 | Elemento del diagrama | Archivo de origen | Línea / sección |
 |---|---|---|
-| `Contrato` | `docs/diagrama-dominio.md` | línea 18 — `class Contrato` |
-| `Contrato.claveNatural()` | `docs/diagrama-dominio.md` | línea 22 |
-| `Contrato.par()` | `docs/diagrama-dominio.md` | línea 23 |
+| `Contrato` | `docs/modelo-dominio.md` | línea 18 — `class Contrato` |
+| `Contrato.claveNatural()` | `docs/modelo-dominio.md` | línea 22 |
+| `Contrato.par()` | `docs/modelo-dominio.md` | línea 23 |
 | Clave natural = `numeroContrato` + entidad (R-2) | `docs/problema-duro.md` | §3 "Decisión: la clave natural", línea 31 |
 | Clave natural como regla enunciada | `docs/reglas-de-negocio.md` | R-2, línea 36 |
-| `CargadorDeContratos` | `docs/diagrama-dominio.md` | línea 26 — `class CargadorDeContratos` |
-| `validarColumnas(List~String~)` | `docs/diagrama-dominio.md` | línea 29 |
+| `CargadorDeContratos` | `docs/modelo-dominio.md` | línea 26 — `class CargadorDeContratos` |
+| `validarColumnas(List~String~)` | `docs/modelo-dominio.md` | línea 29 |
 | Las 6 columnas requeridas (R-1) | `docs/reglas-de-negocio.md` | R-1, línea 26 |
-| CSV como entrada del flujo | `docs/historias-usuario.md` | HU-01, línea 32 |
+| CSV como entrada del flujo | `docs/backlog.md` | HU-01, línea 32 |
 | CSV como alcance del MVP | `docs/vision-producto.md` | §6 punto 1, línea 75 |
 | `FilaDescartada` / `filasDescartadas` | `docs/reglas-de-negocio.md` | R-6, línea 91 |
-| Filas incompletas no generan alertas | `docs/historias-usuario.md` | HU-04, línea 142 |
-| `DetectorDeReincidencias` | `docs/diagrama-dominio.md` | línea 33 |
-| `umbral` | `docs/diagrama-dominio.md` | línea 34 |
-| `detectar(List~Contrato~) List~Alerta~` | `docs/diagrama-dominio.md` | línea 35 |
+| Filas incompletas no generan alertas | `docs/backlog.md` | HU-04, línea 142 |
+| `DetectorDeReincidencias` | `docs/modelo-dominio.md` | línea 33 |
+| `umbral` | `docs/modelo-dominio.md` | línea 34 |
+| `detectar(List~Contrato~) List~Alerta~` | `docs/modelo-dominio.md` | línea 35 |
 | Reincidencia = mismo par en 2+ contratos (R-3) | `docs/reglas-de-negocio.md` | R-3, línea 45 |
-| `Alerta` | `docs/diagrama-dominio.md` | línea 38 |
-| `Alerta.evidencia` con 2..* contratos | `docs/diagrama-dominio.md` | líneas 39 y 52; nota en línea 57 |
-| `Alerta.cantidadContratos()` | `docs/diagrama-dominio.md` | línea 40 |
+| `Alerta` | `docs/modelo-dominio.md` | línea 38 |
+| `Alerta.evidencia` con 2..* contratos | `docs/modelo-dominio.md` | líneas 39 y 52; nota en línea 57 |
+| `Alerta.cantidadContratos()` | `docs/modelo-dominio.md` | línea 40 |
 | La alerta describe coincidencia, no culpa (R-4) | `docs/reglas-de-negocio.md` | R-4, línea 71 |
 | Tablas `entidad`, `contratista`, `funcionario`, `contrato` | `docs/esquema-bd.md` | §1 modelo conceptual, líneas 31-53; §2 modelo lógico, línea 69 |
 | Modelo físico de esas tablas | `db/schema.sql` | líneas 28, 40, 51, 63 |
@@ -385,7 +385,7 @@ Cada fila apunta a un **insumo de modelado** con su línea verificable. Los elem
 | Relación N:M alerta–contrato (la evidencia) | `docs/esquema-bd.md` | línea 29 del ER y explicación en línea 63 |
 | `alerta` y `alerta_contrato` en físico | `db/schema.sql` | líneas 109 y 135 |
 | `uq_alerta_par` (una alerta por par y tipo) | `db/schema.sql` | línea 119 |
-| Segunda carga sin duplicar (idempotencia) | `docs/historias-usuario.md` | HU-07, criterios 1 y 2, líneas 258-261 |
+| Segunda carga sin duplicar (idempotencia) | `docs/backlog.md` | HU-07, criterios 1 y 2, líneas 258-261 |
 | `monto` y `fecha` como texto en `Contrato` | `docs/reglas-de-negocio.md` | R-8, línea 136 |
 
 ### Dónde está implementado cada elemento
@@ -412,12 +412,12 @@ Se verificó por búsqueda directa que **ningún insumo menciona HTTP, REST, end
 
 | Elemento | Archivo donde debería estar | Qué falta |
 |---|---|---|
-| `POST /api/contratos/cargar` y `ContratoControlador` | `docs/historias-usuario.md` (HU-01 / HU-07) o un `docs/api.md` que no existe | Ninguna historia define interfaz de entrada. HU-01 dice "desde un archivo CSV" sin decir cómo llega el archivo. El endpoint se inventó al implementar |
-| `ContratoServicio` (capa de aplicación) | `docs/diagrama-dominio.md` | El modelo de dominio no tiene capa de aplicación ni clase orquestadora |
-| `ResultadoServicio` | `docs/diagrama-dominio.md` | No existe en ningún insumo; es el DTO de la respuesta HTTP |
-| `EntidadRepo`, `ContratistaRepo`, `FuncionarioRepo`, `ContratoRepo`, `AlertaRepo` | `docs/diagrama-dominio.md` | El modelo no define repositorios ni puertos de persistencia |
+| `POST /api/contratos/cargar` y `ContratoControlador` | `docs/backlog.md` (HU-01 / HU-07) o un `docs/api.md` que no existe | Ninguna historia define interfaz de entrada. HU-01 dice "desde un archivo CSV" sin decir cómo llega el archivo. El endpoint se inventó al implementar |
+| `ContratoServicio` (capa de aplicación) | `docs/modelo-dominio.md` | El modelo de dominio no tiene capa de aplicación ni clase orquestadora |
+| `ResultadoServicio` | `docs/modelo-dominio.md` | No existe en ningún insumo; es el DTO de la respuesta HTTP |
+| `EntidadRepo`, `ContratistaRepo`, `FuncionarioRepo`, `ContratoRepo`, `AlertaRepo` | `docs/modelo-dominio.md` | El modelo no define repositorios ni puertos de persistencia |
 | `findAllConFetch()` | `docs/esquema-bd.md` | Ninguna consulta está especificada en los insumos |
-| `ResultadoCarga` | `docs/diagrama-dominio.md` línea 28 | El insumo dice que la carga devuelve `List~Contrato~`. El tipo que agrupa cargados + descartados no está modelado, aunque R-6 y HU-04 exigen reportar los descartes |
+| `ResultadoCarga` | `docs/modelo-dominio.md` línea 28 | El insumo dice que la carga devuelve `List~Contrato~`. El tipo que agrupa cargados + descartados no está modelado, aunque R-6 y HU-04 exigen reportar los descartes |
 | `EntidadJpa`, `ContratistaJpa`, `FuncionarioJpa`, `ContratoJpa`, `AlertaJpa` | `docs/esquema-bd.md` | Las **tablas** sí están respaldadas (§5). El mapeo objeto-relacional y estas clases no aparecen en ningún insumo |
 | Transacción: `@Transactional`, INICIO / COMMIT / ROLLBACK | `docs/reglas-de-negocio.md` o `docs/problema-duro.md` | No hay ningún requisito de atomicidad escrito. La transacción aparece en §2 porque la tarea obliga a marcarla, no porque un insumo la pida |
 
@@ -425,11 +425,11 @@ Se verificó por búsqueda directa que **ningún insumo menciona HTTP, REST, end
 
 | Insumo dice | La implementación hace | Estado |
 |---|---|---|
-| `cargarDesdeCSV(String ruta)` — `diagrama-dominio.md:28` | `cargarDesde(InputStream)` | La firma cambió de ruta de archivo a stream para poder recibir un `multipart`. Consecuencia directa del endpoint HTTP no respaldado (grupo A) |
-| `clavesVistas` como campo de instancia — `diagrama-dominio.md:27` | Variable local en `procesar(...)` | Deduplica solo dentro de un archivo. La idempotencia entre ejecuciones la sostiene la BD (HU-07) |
-| `Contrato.monto: Decimal`, `fecha: Date` — `diagrama-dominio.md:20-21` | `String` en el record de dominio, `BigDecimal` / `LocalDate` solo en `ContratoJpa` | Declarado como deuda en R-8 (`reglas-de-negocio.md:136`). La conversión ocurre en el mapeo a persistencia |
-| `Contrato` se relaciona con `Entidad`, `Contratista` y `Funcionario` por asociación — `diagrama-dominio.md:44-46` | El record aplana los tres a `String` | Las asociaciones reaparecen en la capa de persistencia como FK |
-| `Alerta.mostrar()` — `diagrama-dominio.md:41` | No existe | La presentación la hace el serializador JSON. No aparece en §2, así que no se modeló en §3 |
+| `cargarDesdeCSV(String ruta)` — `modelo-dominio.md:28` | `cargarDesde(InputStream)` | La firma cambió de ruta de archivo a stream para poder recibir un `multipart`. Consecuencia directa del endpoint HTTP no respaldado (grupo A) |
+| `clavesVistas` como campo de instancia — `modelo-dominio.md:27` | Variable local en `procesar(...)` | Deduplica solo dentro de un archivo. La idempotencia entre ejecuciones la sostiene la BD (HU-07) |
+| `Contrato.monto: Decimal`, `fecha: Date` — `modelo-dominio.md:20-21` | `String` en el record de dominio, `BigDecimal` / `LocalDate` solo en `ContratoJpa` | Declarado como deuda en R-8 (`reglas-de-negocio.md:136`). La conversión ocurre en el mapeo a persistencia |
+| `Contrato` se relaciona con `Entidad`, `Contratista` y `Funcionario` por asociación — `modelo-dominio.md:44-46` | El record aplana los tres a `String` | Las asociaciones reaparecen en la capa de persistencia como FK |
+| `Alerta.mostrar()` — `modelo-dominio.md:41` | No existe | La presentación la hace el serializador JSON. No aparece en §2, así que no se modeló en §3 |
 | La rebanada elegida (Candidata A) excluye la detección | `cargarYDetectar` detecta dentro de la misma transacción | Ver §1: divergencia declarada respecto al criterio de selección |
 
 ### C. Pendientes de la rebanada
@@ -444,7 +444,7 @@ Se verificó por búsqueda directa que **ningún insumo menciona HTTP, REST, end
 
 ### D. Nombres de los insumos
 
-Los insumos se entregaron con nombres distintos a los del repositorio: `backlog.md` → `docs/historias-usuario.md`; `domain-model.md` → `docs/diagrama-dominio.md`; `data-model.md` → `docs/esquema-bd.md`. Todas las citas de §5 usan los nombres reales del repositorio.
+Los insumos se entregaron con nombres distintos a los del repositorio: `backlog.md` → `docs/backlog.md`; `domain-model.md` → `docs/modelo-dominio.md`; `data-model.md` → `docs/esquema-bd.md`. Todas las citas de §5 usan los nombres reales del repositorio.
 
 ### E. Lo que la rebanada destapó
 

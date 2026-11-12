@@ -10,11 +10,11 @@ por la tabla de la sección 1.
 | Qué problema resuelve el proyecto y para quién | [docs/vision-producto.md](vision-producto.md) |
 | Quiénes son las partes interesadas y qué exige cada una | [docs/stakeholders.md](stakeholders.md) |
 | Cuál es el problema duro y cómo se resolvió | [docs/problema-duro.md](problema-duro.md) |
-| Las historias de usuario y el backlog priorizado | [docs/historias-usuario.md](historias-usuario.md) |
-| **La historia central, desarrollada a fondo** | [docs/historias-usuario.md → HU-02](historias-usuario.md#hu-02--detectar-reincidencia-contratista-funcionario-historia-central) |
+| Las historias de usuario y el backlog priorizado | [docs/backlog.md](backlog.md) |
+| **La historia central, desarrollada a fondo** | [docs/backlog.md → HU-02](backlog.md#hu-02--detectar-reincidencia-contratistafuncionario-historia-central) |
 | Qué cuenta como alerta / qué hace el sistema con un dato raro | [docs/reglas-de-negocio.md](reglas-de-negocio.md) |
 | El glosario del dominio (reincidencia, clave natural, evidencia…) | [docs/reglas-de-negocio.md § Glosario](reglas-de-negocio.md) |
-| Las clases del sistema y cómo se relacionan | [docs/diagrama-dominio.md](diagrama-dominio.md) |
+| Las clases del sistema y cómo se relacionan | [docs/modelo-dominio.md](modelo-dominio.md) |
 | Cómo se guardarán los datos (modelo entidad–relación) | [docs/esquema-bd.md](esquema-bd.md) |
 | El modelo físico en PostgreSQL | [db/schema.sql](../db/schema.sql) |
 | **La primera rebanada ejecutable y su trazabilidad** | [esqueleto/rebanada.md](../esqueleto/rebanada.md) |
@@ -85,17 +85,19 @@ proyecto_g/
     ├── vision-producto.md       Visión, alcance del MVP, métricas, roadmap
     ├── stakeholders.md          12 stakeholders, matriz influencia/interés
     ├── problema-duro.md         Idempotencia: enunciado, decisión, alcance real
-    ├── historias-usuario.md     Backlog priorizado (MoSCoW) + HU-02 a fondo
+    ├── backlog.md               Backlog: 8 historias, estado, criterios → pruebas Java, trazabilidad
     ├── reglas-de-negocio.md     Lógica de negocio explícita + glosario
-    ├── diagrama-dominio.md      Diagrama de clases (Mermaid) + decisiones de modelado
+    ├── modelo-dominio.md        Clases Java reales del dominio (Mermaid) y su persistencia
     ├── esquema-bd.md            Modelo entidad–relación (Mermaid) + restricciones
-    ├── decisiones-tecnicas.md   28 decisiones con su alternativa descartada
-    ├── deuda-tecnica.md         Deudas priorizadas, su costo y cómo pagarlas
-    ├── seguridad-y-rnf.md       Checklist de seguridad, amenazas y los 2 RNF medidos (Módulo 7)
+    ├── decisiones-tecnicas.md   31 decisiones con su alternativa descartada + patrones de diseño
+    ├── deuda-tecnica.md         Registro único de deuda (DT-01 a DT-29), priorizada
+    ├── seguridad-y-rnf.md       Seguridad, superficie de entrada, RNF medidos y OWASP
     ├── seguridad/               Evidencias por semana (13 y 14), gráficas de los RNF, k6 y EXPLAIN ANALYZE
     ├── modulo-java-hu04.md      Qué entrega HU-04, cómo ejecutarlo y demostrarlo
     ├── mapa-del-proyecto.md     Este documento
-    ├── uso-ia.md                Uso de IA y postura del equipo
+    ├── uso-ia.md                Uso de IA por actividad y postura del equipo
+    ├── paquete-entrevista.md    Problema, problema duro, métricas y decisiones para la entrevista
+    ├── demo-entrega-final.md    Guion de demostración verificado
     └── Equipo/                  Un archivo por integrante
 ```
 
@@ -143,17 +145,17 @@ contrato de la prueba única y trazabilidad a los insumos— está en
 
 | Historia | Regla | Código | Pruebas |
 |---|---|---|---|
-| [HU-01](historias-usuario.md#hu-01--cargar-contratos-desde-un-archivo-csv) Cargar contratos | R-1, R-2, R-8 | `dominio/CargadorDeContratos.java` | `CargadorDeContratosTest` (5) |
-| [HU-02](historias-usuario.md#hu-02--detectar-reincidencia-contratista-funcionario-historia-central) Reincidencia | R-3, R-4 | `dominio/DetectorDeReincidencias.java` | `DetectorDeReincidenciasTest` (8) |
+| [HU-01](backlog.md#hu-01--cargar-contratos-desde-un-archivo-csv) Cargar contratos | R-1, R-2, R-8 | `dominio/CargadorDeContratos.java` | `CargadorDeContratosTest` (5) |
+| [HU-02](backlog.md#hu-02--detectar-reincidencia-contratistafuncionario-historia-central) Reincidencia | R-3, R-4 | `dominio/DetectorDeReincidencias.java` | `DetectorDeReincidenciasTest` (8) |
 | [Problema duro](problema-duro.md) Idempotencia | R-2, R-6 | `dominio/CargadorDeContratos.java`, `db/schema.sql` | `CargadorDeContratosTest` (5) + `e2e_carga_persiste_y_es_idempotente` |
-| [HU-04](historias-usuario.md#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) Filas incompletas | R-6 | `dominio/CargadorDeContratos.java` | `FilasIncompletasTest` (7) + `carga_filas_incompletas_sin_invalidar_el_archivo` |
-| [HU-07](historias-usuario.md#hu-07--conservar-los-contratos-entre-ejecuciones) Idempotencia entre ejecuciones | R-2 | `aplicacion/ContratoServicio.java`, `uq_contrato_clave_natural` | `e2e_carga_persiste_y_es_idempotente` |
-| [HU-05](historias-usuario.md#hu-05--reconocer-el-mismo-nombre-escrito-de-formas-distintas) Nombres escritos distinto | R-5 | `dominio/NormalizadorDeNombres.java` | `NombresVariantesTest` (6) + `AlertasE2ETest` |
-| [HU-06](historias-usuario.md#hu-06--saber-cuándo-un-duplicado-traía-datos-distintos) Conflictos de duplicados | R-2 | `dominio/CargadorDeContratos.java`, `aplicacion/ContratoServicio.java` | `ConflictosDeDuplicadosTest` (4) + `AlertasE2ETest` |
-| [HU-03](historias-usuario.md#hu-03--detectar-fraccionamiento-de-contratos) Fraccionamiento | R-9, R-8 | `dominio/DetectorDeFraccionamiento.java` | `DetectorDeFraccionamientoTest` (9) + `AlertasE2ETest` |
-| [HU-08](historias-usuario.md#hu-08--exportar-el-reporte-de-alertas) Exportar reporte | R-10 | `dominio/ExportadorDeAlertas.java`, `api/AlertaControlador.java` | `ExportadorDeAlertasTest` (6) + `AlertasE2ETest` |
+| [HU-04](backlog.md#hu-04--no-generar-alertas-a-partir-de-filas-incompletas) Filas incompletas | R-6 | `dominio/CargadorDeContratos.java` | `FilasIncompletasTest` (7) + `carga_filas_incompletas_sin_invalidar_el_archivo` |
+| [HU-07](backlog.md#hu-07--conservar-los-contratos-entre-ejecuciones) Idempotencia entre ejecuciones | R-2 | `aplicacion/ContratoServicio.java`, `uq_contrato_clave_natural` | `e2e_carga_persiste_y_es_idempotente` |
+| [HU-05](backlog.md#hu-05--reconocer-el-mismo-nombre-escrito-de-formas-distintas) Nombres escritos distinto | R-5 | `dominio/NormalizadorDeNombres.java` | `NombresVariantesTest` (6) + `AlertasE2ETest` |
+| [HU-06](backlog.md#hu-06--saber-cuándo-un-duplicado-traía-datos-distintos) Conflictos de duplicados | R-2 | `dominio/CargadorDeContratos.java`, `aplicacion/ContratoServicio.java` | `ConflictosDeDuplicadosTest` (4) + `AlertasE2ETest` |
+| [HU-03](backlog.md#hu-03--detectar-fraccionamiento-de-contratos) Fraccionamiento | R-9, R-8 | `dominio/DetectorDeFraccionamiento.java` | `DetectorDeFraccionamientoTest` (9) + `AlertasE2ETest` |
+| [HU-08](backlog.md#hu-08--exportar-el-reporte-de-alertas) Exportar reporte | R-10 | `dominio/ExportadorDeAlertas.java`, `api/AlertaControlador.java` | `ExportadorDeAlertasTest` (6) + `AlertasE2ETest` |
 
-**88 pruebas:** 59 de dominio (rápidas, sin base de datos) y 29 de
+**93 pruebas:** 63 de dominio (rápidas, sin base de datos) y 29 de
 punta a punta por HTTP real contra PostgreSQL, que corren en GitHub
 Actions en cada Pull Request. Cada criterio de aceptación automatizable
 de las 8 historias tiene su prueba;
@@ -166,7 +168,7 @@ Los nombres de las pruebas **son** los criterios de aceptación: al correr
 
 ```bash
 docker compose up -d             # PostgreSQL 16 en localhost:5433 + Adminer en localhost:8081
-./mvnw verify                    # las 88 pruebas (desde la raíz)
+./mvnw verify                    # las 93 pruebas (desde la raíz)
 ./mvnw spring-boot:run           # levanta DAC en localhost:8080
 ```
 
@@ -183,7 +185,7 @@ contratos como evidencia (uno en la alcaldía y dos en la gobernación: la
 señal cruza entidades, R-3). Repetir el mismo `curl` vuelve a dar
 `contratosNuevos: 0`: eso es HU-07.
 
-Salida esperada de `./mvnw verify`: `Tests run: 88, Failures: 0, Errors: 0`.
+Salida esperada de `./mvnw verify`: `Tests run: 93, Failures: 0, Errors: 0`.
 Las 26 de punta a punta requieren el contenedor arriba; las otras 56 no
 tocan la base.
 
@@ -211,7 +213,7 @@ sesión antes de usar datos reales (DT-03).
 
 | Área | Responsable | Archivos |
 |---|---|---|
-| Requisitos, backlog y reglas de negocio | Gerson Rojo — [ficha](Equipo/gerson_rojo.md) | `docs/historias-usuario.md`, `docs/reglas-de-negocio.md`, `docs/vision-producto.md`, `docs/stakeholders.md`, `docs/deuda-tecnica.md` |
+| Requisitos, backlog y reglas de negocio | Gerson Rojo — [ficha](Equipo/gerson_rojo.md) | `docs/backlog.md`, `docs/reglas-de-negocio.md`, `docs/vision-producto.md`, `docs/stakeholders.md`, `docs/deuda-tecnica.md` |
 | Carga de datos y detección de alertas | Juan Pablo Cardozo — [ficha](Equipo/juan-pablo-cardozo-rivera.md) | `java/src/main/` |
 | Plan de pruebas y verificación de criterios | Yerson Pérez — [ficha](Equipo/yerson_cadena.md) | `java/src/test/` |
 | Decisiones y documentación de proceso | Equipo | `docs/decisiones-tecnicas.md`, `docs/uso-ia.md` |

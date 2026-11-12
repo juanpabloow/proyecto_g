@@ -117,7 +117,7 @@ número de fila. El resto del archivo se analiza igual.
 - Código: `java/src/main/java/dac/dominio/CargadorDeContratos.java` → `CAMPOS_OBLIGATORIOS`
 - Pruebas: `FilasIncompletasTest` (7 casos) y, de punta a punta,
   `ContratoE2ETest` → `carga_filas_incompletas_sin_invalidar_el_archivo`
-- Historia: [HU-04](historias-usuario.md)
+- Historia: [HU-04](backlog.md)
 - **En la frontera de persistencia:** que `monto` y `fecha` vacíos no
   descarten la fila obliga a que las columnas admitan `NULL`. El modelo
   físico lo exigía al revés y rompía la carga completa; corregido en la
@@ -171,7 +171,7 @@ participan. Una misma evidencia no se reporta en dos alertas.
 
 - Código: `java/src/main/java/dac/dominio/DetectorDeFraccionamiento.java`
 - Pruebas: `DetectorDeFraccionamientoTest` (9 casos)
-- Historia: [HU-03](historias-usuario.md)
+- Historia: [HU-03](backlog.md)
 
 ## R-10 — El reporte exportado no ejecuta fórmulas **[Implementada]**
 

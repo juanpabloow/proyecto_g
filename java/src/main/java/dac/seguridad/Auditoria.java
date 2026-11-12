@@ -18,13 +18,20 @@ public final class Auditoria {
 
     private Auditoria() {}
 
-    public static void cargaAceptada(String archivo, long bytes, int nuevos, int totalEnBd,
-                                     int descartadas, int conflictos, int reincidencias,
-                                     int fraccionamientos) {
-        LOG.info("AUDITORIA carga aceptada archivo=\"{}\" bytes={} nuevos={} totalEnBd={} "
-                        + "descartadas={} conflictos={} reincidencias={} fraccionamientos={}",
-                limpio(archivo), bytes, nuevos, totalEnBd, descartadas, conflictos,
-                reincidencias, fraccionamientos);
+    /**
+     * Una línea por carga aceptada. Hace auditable el problema duro: una
+     * recarga del mismo archivo queda registrada con {@code nuevos=0} y todos
+     * sus contratos en {@code yaGuardados}; las filas repetidas dentro del
+     * archivo, en {@code duplicadosEnArchivo}.
+     */
+    public static void cargaAceptada(String archivo, long bytes, int nuevos, int yaGuardados,
+                                     int duplicadosEnArchivo, int totalEnBd, int descartadas,
+                                     int conflictos, int reincidencias, int fraccionamientos) {
+        LOG.info("AUDITORIA carga aceptada archivo=\"{}\" bytes={} nuevos={} yaGuardados={} "
+                        + "duplicadosEnArchivo={} totalEnBd={} descartadas={} conflictos={} "
+                        + "reincidencias={} fraccionamientos={}",
+                limpio(archivo), bytes, nuevos, yaGuardados, duplicadosEnArchivo, totalEnBd,
+                descartadas, conflictos, reincidencias, fraccionamientos);
     }
 
     public static void cargaRechazada(String archivo, String motivo) {

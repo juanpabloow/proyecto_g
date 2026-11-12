@@ -77,9 +77,11 @@ public class ContratoServicio {
 
         // 4. Persistencia: guardar solo los contratos nuevos (idempotencia — HU-07)
         int nuevos = 0;
+        int yaGuardados = 0;
         for (Contrato c : carga.contratos()) {
             ContratoJpa existente = indice.contratos.get(c.claveNatural());
             if (existente != null) {
+                yaGuardados++;
                 // HU-06: el contrato ya estaba en la base; si trae datos distintos, se reporta
                 List<String> distintos = camposDistintos(existente, c, montos.get(c), fechas.get(c));
                 if (!distintos.isEmpty()) {
@@ -107,7 +109,7 @@ public class ContratoServicio {
             guardarAlerta(alerta, indice, alertasGuardadas);
         }
 
-        return new ResultadoServicio(nuevos, historico.size(), carga.duplicadosIgnorados(),
+        return new ResultadoServicio(nuevos, yaGuardados, historico.size(), carga.duplicadosIgnorados(),
                 carga.filasDescartadas(), conflictos, alertas, fraccionamientos);
     }
 
